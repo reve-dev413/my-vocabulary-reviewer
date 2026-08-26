@@ -1,0 +1,16 @@
+{
+  "name": "今天你记了吗",
+  "short_name": "记了吗",
+  "description": "个人英语知识间隔复习器（纯本地运行）",
+  "lang": "zh-CN",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f4f4f4",
+  "theme_color": "#2f6fed",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

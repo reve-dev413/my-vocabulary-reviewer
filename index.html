@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>今天你记了吗</title>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="今天你记了吗">
+<meta name="theme-color" content="#2f6fed">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    background: #f4f4f4;
+    color: #333;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: 20px;
+    padding-top: calc(20px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  }
+  header {
+    width: 100%;
+    max-width: 640px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  h1 { font-size: 20px; }
+  .toolbar button {
+    margin-left: 8px;
+    padding: 5px 10px;
+    font-size: 13px;
+    border: 1px solid #bbb;
+    background: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .card {
+    width: 100%;
+    max-width: 640px;
+    background: #fff;
+    border-radius: 10px;
+    padding: 28px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    text-align: center;
+    min-height: 320px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .tag {
+    display: inline-block;
+    font-size: 12px;
+    color: #666;
+    background: #eee;
+    border-radius: 4px;
+    padding: 2px 8px;
+    margin-bottom: 12px;
+  }
+  .topic-name { font-size: 14px; color: #888; margin-bottom: 8px; }
+  .prompt { font-size: 22px; line-height: 1.6; margin: 12px 0 20px; word-break: break-word; }
+  .prompt-in-answer { font-size: 13px; color: #999; margin: 4px 0 2px; line-height: 1.6; word-break: break-word; }
+  .hl-red { color: #d33; font-weight: 600; }
+  .answer {
+    font-size: 17px;
+    line-height: 1.8;
+    margin: 12px 0 16px;
+    text-align: left;
+    white-space: pre-line;
+    word-break: break-word;
+  }
+  .materials {
+    text-align: left;
+    font-size: 14px;
+    color: #555;
+    border-top: 1px dashed #ddd;
+    padding-top: 12px;
+    margin-top: 8px;
+    line-height: 1.7;
+  }
+  .materials .m-title { font-size: 12px; color: #999; margin-bottom: 6px; }
+  .materials p { margin-bottom: 6px; word-break: break-word; }
+  .related { font-size: 13px; color: #888; margin-top: 10px; }
+  .btn {
+    display: inline-block;
+    border: none;
+    border-radius: 6px;
+    padding: 12px 28px;
+    font-size: 16px;
+    cursor: pointer;
+    margin: 6px;
+    min-width: 110px;
+    min-height: 48px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-primary { background: #2f6fed; color: #fff; }
+  .btn-plain { background: #eee; color: #333; }
+  .grade-btn { background: #fff; color: #333; border: 1.5px solid #ccc; font-size: 17px; }
+  .grade-btn:hover { border-color: #2f6fed; }
+  .hidden { display: none; }
+  .count { font-size: 16px; color: #555; margin: 12px 0 24px; }
+  .progress { font-size: 13px; color: #999; margin-bottom: 10px; }
+  .finished { font-size: 18px; margin: 12px 0 20px; }
+  footer { margin-top: 16px; font-size: 12px; color: #aaa; }
+
+  /* ===== 移动端 / PWA 适配（全部圈定范围，PC 外观不变） ===== */
+  html, body { overflow-x: hidden; }
+
+  /* 手机：窄屏单列，四档按钮 2×2 大网格 */
+  @media (max-width: 600px) {
+    body {
+      padding: 12px;
+      padding-top: calc(12px + env(safe-area-inset-top, 0px));
+      padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    }
+    header { flex-wrap: wrap; gap: 8px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 6px; }
+    .toolbar button { margin-left: 0; }
+    .card { padding: 20px 16px; }
+    .prompt { font-size: 24px; }
+    .answer { font-size: 17px; }
+    .grade-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .grade-row .btn { width: 100%; margin: 0; min-width: 0; }
+  }
+
+  /* 平板（iPad 竖屏等）：卡片与字号适度加大 */
+  @media (min-width: 601px) and (max-width: 1024px) {
+    .card { max-width: 680px; }
+    .prompt { font-size: 26px; }
+    .answer { font-size: 18px; }
+    .btn { font-size: 17px; }
+  }
+
+  /* 平板横屏（触屏大屏）：合理利用宽度；PC（鼠标）不受影响 */
+  @media (min-width: 900px) and (orientation: landscape) and (pointer: coarse) {
+    .card { max-width: 760px; }
+    .prompt { font-size: 26px; }
+    .answer { font-size: 18px; }
+  }
+
+  /* 导入方式弹窗 */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,.45);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal-box {
+    background: #fff; border-radius: 12px;
+    padding: 22px 24px; width: 100%; max-width: 360px;
+    text-align: center;
+    box-shadow: 0 8px 24px rgba(0,0,0,.2);
+  }
+  .modal-title { font-size: 17px; font-weight: 600; margin-bottom: 10px; }
+  .modal-desc { font-size: 14px; color: #666; margin-bottom: 16px; line-height: 1.6; }
+  .modal-actions { display: flex; flex-direction: column; gap: 10px; }
+  .modal-actions .btn { width: 100%; margin: 0; min-width: 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📖 今天你记了吗</h1>
+  <div class="toolbar">
+    <button id="backBtn" class="hidden" title="返回上一题重新评价">上一题</button>
+    <button id="exportBtn" title="把复习进度保存为文件（reviewer-backup.json）">导出进度</button>
+    <button id="importBtn" title="从备份文件恢复复习进度">导入进度</button>
+    <input type="file" id="fileInput" accept=".json" class="hidden">
+  </div>
+</header>
+
+<div class="card">
+  <!-- 准备状态 -->
+  <div id="readyView">
+    <div class="count">今日待复习：<span id="dueCount">0</span> 项</div>
+    <button class="btn btn-primary" id="startBtn">开始复习</button>
+  </div>
+
+  <!-- 复习状态：回忆 -->
+  <div id="recallView" class="hidden">
+    <div class="progress"><span id="progressText"></span></div>
+    <span class="tag" id="typeTag"></span>
+    <div class="topic-name" id="topicName"></div>
+    <div class="prompt" id="promptText"></div>
+    <button class="btn btn-primary" id="showAnswerBtn">显示答案</button>
+  </div>
+
+  <!-- 复习状态：评价 -->
+  <div id="gradeView" class="hidden">
+    <div class="progress"><span id="progressText2"></span></div>
+    <span class="tag" id="typeTag2"></span>
+    <div class="topic-name" id="topicName2"></div>
+    <div class="prompt-in-answer hidden" id="promptInAnswer"></div>
+    <div class="answer" id="answerText"></div>
+    <div class="materials hidden" id="materialsBox">
+      <div class="m-title">补充材料</div>
+      <div id="materialsList"></div>
+    </div>
+    <div class="related hidden" id="relatedBox"></div>
+    <div class="grade-row">
+      <button class="btn grade-btn" data-grade="忘记">忘记</button>
+      <button class="btn grade-btn" data-grade="困难">困难</button>
+      <button class="btn grade-btn" data-grade="记得">记得</button>
+      <button class="btn grade-btn" data-grade="简单">简单</button>
+    </div>
+  </div>
+
+  <!-- 复习状态：判断题 -->
+  <div id="judgeView" class="hidden">
+    <div class="progress"><span id="judgeProgress"></span></div>
+    <span class="tag" id="judgeType"></span>
+    <div class="topic-name" id="judgeTopic"></div>
+    <div class="prompt" id="judgePrompt"></div>
+    <div id="judgeButtons">
+      <button class="btn grade-btn" id="judgeTrueBtn">✅ 对</button>
+      <button class="btn grade-btn" id="judgeFalseBtn">❌ 错</button>
+    </div>
+    <div class="answer hidden" id="judgeAnswerBox">
+      <div id="judgeResult"></div>
+      <div id="judgeAnswerText"></div>
+    </div>
+    <button class="btn btn-primary hidden" id="judgeNextBtn">下一张</button>
+  </div>
+
+  <!-- 完成状态 -->
+  <div id="doneView" class="hidden">
+    <div class="finished">✅ 本轮复习完成</div>
+    <div id="doneSummary" class="count"></div>
+    <button class="btn btn-plain" id="againBtn">再复习一轮</button>
+  </div>
+</div>
+
+<!-- 导入方式选择弹窗 -->
+<div id="importModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-title">导入进度</div>
+    <div class="modal-desc">备份中共 <span id="importCount">0</span> 张卡的记忆状态，选择导入方式：</div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="importMergeBtn">合并（最近复习者优先）</button>
+      <button class="btn" id="importOverwriteBtn">覆盖（替换全部）</button>
+      <button class="btn btn-plain" id="importCancelBtn">取消</button>
+    </div>
+  </div>
+</div>
+
+<footer>纯本地运行 · 数据只保存在你的浏览器中 · 记得定期「导出进度」</footer>
+
+<!-- 数据来源：knowledge-studio 母数据产物（由 tools/build_web_data.py 生成）；旧 knowledge.js 保留不引用 -->
+<script src="knowledge-studio/web/build/data.js"></script>
+<script src="sync.js"></script>
+<script src="app.js"></script>
+<script>
+// 注册 Service Worker（PWA 主屏 / 离线支持）。
+// 仅 HTTPS 或 localhost 下注册；双击 index.html（file://）时静默跳过，不影响使用。
+if ("serviceWorker" in navigator &&
+    (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("./service-worker.js").catch(function () {});
+  });
+}
+</script>
+</body>
+</html>
