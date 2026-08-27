@@ -8,16 +8,73 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="今天你记了吗">
-<meta name="theme-color" content="#2f6fed">
+<meta name="theme-color" content="#2f6fed" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1d2126" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
 <style>
+  /* ===== 主题变量：浅色（默认）= 原配色不变；深色模式覆盖 ===== */
+  :root {
+    --bg: #f4f4f4;
+    --text: #333;
+    --card-bg: #fff;
+    --card-shadow: 0 2px 8px rgba(0,0,0,.08);
+    --tag-bg: #eee;
+    --tag-text: #666;
+    --sub-text: #888;
+    --faint-text: #999;
+    --btn-bg: #fff;
+    --btn-border: #bbb;
+    --btn-plain-bg: #eee;
+    --grade-bg: #fff;
+    --grade-border: #ccc;
+    --materials-text: #555;
+    --divider: #ddd;
+    --count-text: #555;
+    --progress-text: #999;
+    --footer-text: #aaa;
+    --modal-mask: rgba(0,0,0,.45);
+    --modal-bg: #fff;
+    --modal-desc-text: #666;
+    --input-bg: #fff;
+    --input-border: #ccc;
+    --hl-red: #d33;
+    --accent: #2f6fed;
+  }
+  [data-theme="dark"] {
+    --bg: #1d2126;
+    --text: #e8eaed;
+    --card-bg: #272c33;
+    --card-shadow: 0 2px 14px rgba(0,0,0,.45);
+    --tag-bg: #363c45;
+    --tag-text: #aeb6c0;
+    --sub-text: #9aa3ad;
+    --faint-text: #8a93a0;
+    --btn-bg: #2f353d;
+    --btn-border: #4a525c;
+    --btn-plain-bg: #333a42;
+    --grade-bg: #2f353d;
+    --grade-border: #4a525c;
+    --materials-text: #b6bdc6;
+    --divider: #3a4149;
+    --count-text: #c2c8d0;
+    --progress-text: #98a1ab;
+    --footer-text: #6d7681;
+    --modal-mask: rgba(0,0,0,.6);
+    --modal-bg: #272c33;
+    --modal-desc-text: #a9b1bb;
+    --input-bg: #22262b;
+    --input-border: #4a525c;
+    --hl-red: #ff8a80;
+    --accent: #6f9bff;
+  }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
-    background: #f4f4f4;
-    color: #333;
+    background: var(--bg);
+    color: var(--text);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -40,18 +97,19 @@
     margin-left: 8px;
     padding: 5px 10px;
     font-size: 13px;
-    border: 1px solid #bbb;
-    background: #fff;
+    border: 1px solid var(--btn-border);
+    background: var(--btn-bg);
+    color: var(--text);
     border-radius: 4px;
     cursor: pointer;
   }
   .card {
     width: 100%;
     max-width: 640px;
-    background: #fff;
+    background: var(--card-bg);
     border-radius: 10px;
     padding: 28px 24px;
-    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    box-shadow: var(--card-shadow);
     text-align: center;
     min-height: 320px;
     display: flex;
@@ -61,16 +119,16 @@
   .tag {
     display: inline-block;
     font-size: 12px;
-    color: #666;
-    background: #eee;
+    color: var(--tag-text);
+    background: var(--tag-bg);
     border-radius: 4px;
     padding: 2px 8px;
     margin-bottom: 12px;
   }
-  .topic-name { font-size: 14px; color: #888; margin-bottom: 8px; }
+  .topic-name { font-size: 14px; color: var(--sub-text); margin-bottom: 8px; }
   .prompt { font-size: 22px; line-height: 1.6; margin: 12px 0 20px; word-break: break-word; }
-  .prompt-in-answer { font-size: 13px; color: #999; margin: 4px 0 2px; line-height: 1.6; word-break: break-word; }
-  .hl-red { color: #d33; font-weight: 600; }
+  .prompt-in-answer { font-size: 13px; color: var(--faint-text); margin: 4px 0 2px; line-height: 1.6; word-break: break-word; }
+  .hl-red { color: var(--hl-red); font-weight: 600; }
   .answer {
     font-size: 17px;
     line-height: 1.8;
@@ -82,15 +140,15 @@
   .materials {
     text-align: left;
     font-size: 14px;
-    color: #555;
-    border-top: 1px dashed #ddd;
+    color: var(--materials-text);
+    border-top: 1px dashed var(--divider);
     padding-top: 12px;
     margin-top: 8px;
     line-height: 1.7;
   }
-  .materials .m-title { font-size: 12px; color: #999; margin-bottom: 6px; }
+  .materials .m-title { font-size: 12px; color: var(--faint-text); margin-bottom: 6px; }
   .materials p { margin-bottom: 6px; word-break: break-word; }
-  .related { font-size: 13px; color: #888; margin-top: 10px; }
+  .related { font-size: 13px; color: var(--sub-text); margin-top: 10px; }
   .btn {
     display: inline-block;
     border: none;
@@ -105,14 +163,14 @@
     -webkit-tap-highlight-color: transparent;
   }
   .btn-primary { background: #2f6fed; color: #fff; }
-  .btn-plain { background: #eee; color: #333; }
-  .grade-btn { background: #fff; color: #333; border: 1.5px solid #ccc; font-size: 17px; }
-  .grade-btn:hover { border-color: #2f6fed; }
+  .btn-plain { background: var(--btn-plain-bg); color: var(--text); }
+  .grade-btn { background: var(--grade-bg); color: var(--text); border: 1.5px solid var(--grade-border); font-size: 17px; }
+  .grade-btn:hover { border-color: var(--accent); }
   .hidden { display: none; }
-  .count { font-size: 16px; color: #555; margin: 12px 0 24px; }
-  .progress { font-size: 13px; color: #999; margin-bottom: 10px; }
+  .count { font-size: 16px; color: var(--count-text); margin: 12px 0 24px; }
+  .progress { font-size: 13px; color: var(--progress-text); margin-bottom: 10px; }
   .finished { font-size: 18px; margin: 12px 0 20px; }
-  footer { margin-top: 16px; font-size: 12px; color: #aaa; }
+  footer { margin-top: 16px; font-size: 12px; color: var(--footer-text); }
 
   /* ===== 移动端 / PWA 适配（全部圈定范围，PC 外观不变） ===== */
   html, body { overflow-x: hidden; }
@@ -152,19 +210,19 @@
   /* 导入方式弹窗 */
   .modal-overlay {
     position: fixed; inset: 0; z-index: 100;
-    background: rgba(0,0,0,.45);
+    background: var(--modal-mask);
     display: flex; align-items: center; justify-content: center;
     padding: 20px;
   }
   .modal-overlay.hidden { display: none; }
   .modal-box {
-    background: #fff; border-radius: 12px;
+    background: var(--modal-bg); border-radius: 12px;
     padding: 22px 24px; width: 100%; max-width: 360px;
     text-align: center;
     box-shadow: 0 8px 24px rgba(0,0,0,.2);
   }
   .modal-title { font-size: 17px; font-weight: 600; margin-bottom: 10px; }
-  .modal-desc { font-size: 14px; color: #666; margin-bottom: 16px; line-height: 1.6; }
+  .modal-desc { font-size: 14px; color: var(--modal-desc-text); margin-bottom: 16px; line-height: 1.6; }
   .modal-actions { display: flex; flex-direction: column; gap: 10px; }
   .modal-actions .btn { width: 100%; margin: 0; min-width: 0; }
   /* Token 输入框（16px 避免 iOS 聚焦自动放大） */
@@ -172,20 +230,105 @@
     width: 100%;
     padding: 11px 12px;
     font-size: 16px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--input-border);
     border-radius: 6px;
     margin-bottom: 16px;
     box-sizing: border-box;
     outline: none;
+    background: var(--input-bg);
+    color: var(--text);
   }
-  .modal-input:focus { border-color: #2f6fed; }
+  .modal-input:focus { border-color: var(--accent); }
+
+  /* ===== 深色模式：四档评价按钮颜色（浅色模式保持原样不变） ===== */
+  [data-theme="dark"] .grade-btn[data-grade="忘记"] { background: #5c2b2b; border-color: #a05555; color: #ffd6d6; }
+  [data-theme="dark"] .grade-btn[data-grade="困难"] { background: #5c3a20; border-color: #a8783f; color: #ffe4c9; }
+  [data-theme="dark"] .grade-btn[data-grade="记得"] { background: #24502e; border-color: #4a8a55; color: #d3f0da; }
+  [data-theme="dark"] .grade-btn[data-grade="简单"] { background: #24415e; border-color: #4a72a8; color: #d3e5ff; }
+
+  /* ===== 版本更新提示（update.js 动态创建，深浅色自适应） ===== */
+  .update-box {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%);
+    z-index: 200;
+    background: var(--modal-bg);
+    color: var(--text);
+    border: 1px solid var(--input-border);
+    border-radius: 10px;
+    box-shadow: 0 4px 18px rgba(0,0,0,.25);
+    padding: 12px 18px;
+    min-width: 240px;
+    max-width: 90vw;
+    text-align: center;
+  }
+  .update-box .update-title { font-size: 14px; margin-bottom: 10px; }
+  .update-actions { display: flex; gap: 10px; justify-content: center; }
+  .update-btn {
+    padding: 8px 16px;
+    font-size: 14px;
+    border-radius: 6px;
+    border: 1px solid var(--input-border);
+    background: var(--btn-bg);
+    color: var(--text);
+    cursor: pointer;
+    min-height: 36px;
+  }
+  .update-btn-primary { background: #2f6fed; border-color: #2f6fed; color: #fff; }
+  .update-btn:disabled { opacity: .6; cursor: default; }
 </style>
+<script>
+// 深色模式：手动选择（theme-preference）优先，否则跟随系统（prefers-color-scheme）
+(function () {
+  var KEY = "theme-preference";
+  function getPref() { try { return localStorage.getItem(KEY) || ""; } catch (e) { return ""; } }
+  function setPref(v) { try { localStorage.setItem(KEY, v); } catch (e) {} }
+  function systemDark() {
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+  function effectiveDark() {
+    var p = getPref();
+    if (p === "dark") return true;
+    if (p === "light") return false;
+    return systemDark();
+  }
+  function apply() {
+    var dark = effectiveDark();
+    document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+    var btn = document.getElementById("themeBtn");
+    if (btn) {
+      btn.textContent = dark ? "☀️" : "🌙";
+      btn.title = dark ? "切换到浅色模式" : "切换到深色模式";
+    }
+  }
+  // 立即应用，避免首屏闪烁
+  document.documentElement.setAttribute("data-theme", effectiveDark() ? "dark" : "light");
+  document.addEventListener("DOMContentLoaded", function () {
+    apply(); // 同步按钮图标与提示（此时按钮已存在）
+    var btn = document.getElementById("themeBtn");
+    if (btn) {
+      btn.addEventListener("click", function () {
+        setPref(effectiveDark() ? "light" : "dark");
+        apply();
+      });
+    }
+    if (window.matchMedia) {
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
+        var p = getPref();
+        if (p !== "dark" && p !== "light") apply(); // system 模式跟随系统变化
+      });
+    }
+  });
+})();
+</script>
 </head>
 <body>
 
 <header>
   <h1>📖 今天你记了吗</h1>
   <div class="toolbar">
+    <button id="themeBtn" title="切换到深色模式">🌙</button>
     <button id="backBtn" class="hidden" title="返回上一题重新评价">上一题</button>
     <button id="exportBtn" title="把复习进度保存为文件（reviewer-backup.json）">导出进度</button>
     <button id="importBtn" title="从备份文件恢复复习进度">导入进度</button>
@@ -295,6 +438,7 @@
 <script src="sync.js"></script>
 <script src="app.js"></script>
 <script src="cloud-sync.js"></script>
+<script src="update.js"></script>
 <script>
 // 注册 Service Worker（PWA 主屏 / 离线支持）。
 // 仅 HTTPS 或 localhost 下注册；双击 index.html（file://）时静默跳过，不影响使用。

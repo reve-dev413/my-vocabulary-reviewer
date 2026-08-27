@@ -1,18 +1,25 @@
 // ============================================================
 // Service Worker：PWA 主屏 / 离线外壳缓存
-// 策略：全部 network-first（在线永远拿最新，包括 build/data.js，
-//       知识库更新后立即生效；离线时回退缓存，复习照常可用）。
-// 缓存名带版本号：内容变更时改 CACHE_VERSION 即可自动清理旧缓存。
+//
+// 策略：真 network-first —— 在线时永远从服务器拿最新文件：
+//   fetch 使用 { cache: "reload" } 绕过浏览器 HTTP 缓存，
+//   避免旧 app.js / sync.js / cloud-sync.js / data.js 被缓存；
+//   只有网络失败（离线）时才回退 Cache Storage。
+//
+// 缓存名取自 version.json 的版本号：版本变化 → 新缓存名 →
+//   activate 自动删除旧缓存，无需手改本文件常量。
 // ============================================================
 
-const CACHE_VERSION = "v2";
-const CACHE_NAME = "reviewer-shell-" + CACHE_VERSION;
+const DEFAULT_CACHE_NAME = "reviewer-shell-default";
+let CACHE_NAME = DEFAULT_CACHE_NAME;
+
 const SHELL = [
   "./",
   "./index.html",
   "./app.js",
   "./sync.js",
   "./cloud-sync.js",
+  "./update.js",
   "./knowledge-studio/web/build/data.js",
   "./manifest.json",
   "./icon-192.png",
@@ -22,19 +29,33 @@ const SHELL = [
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(SHELL))
-      .then(() => self.skipWaiting())
+    (async () => {
+      // 从 version.json 取版本号拼缓存名（拿不到则退回默认名，不影响安装）
+      try {
+        const res = await fetch("version.json", { cache: "reload" });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.version) {
+            CACHE_NAME = "reviewer-shell-" + data.version;
+          }
+        }
+      } catch (e) { /* 离线安装：使用默认缓存名 */ }
+      const cache = await caches.open(CACHE_NAME);
+      await cache.addAll(SHELL);
+      self.skipWaiting();
+    })()
   );
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(
         keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
-      ))
-      .then(() => self.clients.claim())
+      );
+      await self.clients.claim();
+    })()
   );
 });
 
@@ -45,14 +66,19 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   event.respondWith(
-    caches.open(CACHE_NAME).then(async (cache) => {
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
       try {
-        // 在线：拿最新并写入缓存
-        const fresh = await fetch(req);
-        if (fresh && fresh.ok) cache.put(req, fresh.clone());
+        // 真 network-first：绕过 HTTP 缓存，强制走网络拿最新
+        const fresh = await fetch(req, { cache: "reload" });
+        if (fresh && fresh.ok && !url.search) {
+          // 只缓存无查询参数的稳定资源，
+          // 避免 version.json?t=… 之类的临时 URL 污染缓存
+          cache.put(req, fresh.clone()).catch(() => {});
+        }
         return fresh;
       } catch (err) {
-        // 离线：回退缓存；页面导航兜底到 index.html
+        // 离线：回退缓存；导航请求兜底到 index.html
         const cached = await cache.match(req);
         if (cached) return cached;
         if (req.mode === "navigate") {
@@ -61,6 +87,6 @@ self.addEventListener("fetch", (event) => {
         }
         throw err;
       }
-    })
+    })()
   );
 });
