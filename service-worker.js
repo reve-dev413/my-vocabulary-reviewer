@@ -5,13 +5,14 @@
 // 缓存名带版本号：内容变更时改 CACHE_VERSION 即可自动清理旧缓存。
 // ============================================================
 
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const CACHE_NAME = "reviewer-shell-" + CACHE_VERSION;
 const SHELL = [
   "./",
   "./index.html",
   "./app.js",
   "./sync.js",
+  "./cloud-sync.js",
   "./knowledge-studio/web/build/data.js",
   "./manifest.json",
   "./icon-192.png",

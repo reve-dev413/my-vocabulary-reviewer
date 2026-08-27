@@ -442,20 +442,28 @@ function exportBackup() {
   URL.revokeObjectURL(a.href);
 }
 
-// 导入：解析文件（自动兼容旧格式）→ 弹窗选择「合并 / 覆盖 / 取消」
+// 导入：解析备份文本（自动兼容旧格式）→ 弹窗选择「合并 / 覆盖 / 取消」。
+// importBackupText 供文件导入与云端恢复共用（云端恢复见 cloud-sync.js），
+// 成功后可执行 onSuccess 回调（云端恢复用于提示「云端恢复成功」并刷新）。
 let pendingImport = null;
+let afterImport = null;
+
+function importBackupText(text, onSuccess) {
+  try {
+    const backup = Sync.importState(text);
+    pendingImport = backup;
+    afterImport = onSuccess || null;
+    document.getElementById("importCount").textContent = Object.keys(backup.reviewState).length;
+    document.getElementById("importModal").classList.remove("hidden");
+  } catch (e) {
+    alert("导入失败：不是有效的备份文件。");
+  }
+}
 
 function importBackup(file) {
   const reader = new FileReader();
   reader.onload = function () {
-    try {
-      const backup = Sync.importState(reader.result);
-      pendingImport = backup;
-      document.getElementById("importCount").textContent = Object.keys(backup.reviewState).length;
-      document.getElementById("importModal").classList.remove("hidden");
-    } catch (e) {
-      alert("导入失败：不是有效的备份文件。");
-    }
+    importBackupText(reader.result);
   };
   reader.readAsText(file);
 }
@@ -464,6 +472,8 @@ function applyImport(mode) {
   if (!pendingImport) return;
   const backup = pendingImport;
   pendingImport = null;
+  const cb = afterImport;
+  afterImport = null;
   if (mode === "merge") {
     // 合并：逐对象取 lastReview 较新者（最近复习者优先）；本机没有的补上
     state = Sync.mergeState(state, backup.reviewState);
@@ -478,11 +488,16 @@ function applyImport(mode) {
   saveState();
   refreshReadyView();
   document.getElementById("importModal").classList.add("hidden");
-  alert("导入成功 ✅");
+  if (cb) {
+    cb(); // 云端恢复：提示「云端恢复成功」并刷新页面
+  } else {
+    alert("导入成功 ✅");
+  }
 }
 
 function cancelImport() {
   pendingImport = null;
+  afterImport = null;
   document.getElementById("importModal").classList.add("hidden");
 }
 
@@ -506,6 +521,9 @@ document.getElementById("fileInput").addEventListener("change", (e) => {
 document.getElementById("importMergeBtn").addEventListener("click", () => applyImport("merge"));
 document.getElementById("importOverwriteBtn").addEventListener("click", () => applyImport("overwrite"));
 document.getElementById("importCancelBtn").addEventListener("click", cancelImport);
+// 云端备份（实现见 cloud-sync.js：CloudSync.uploadGist / downloadGist）
+document.getElementById("uploadCloudBtn").addEventListener("click", () => CloudSync.uploadGist());
+document.getElementById("downloadCloudBtn").addEventListener("click", () => CloudSync.downloadGist());
 document.querySelectorAll(".grade-btn").forEach((btn) => {
   btn.addEventListener("click", () => gradeCurrent(btn.dataset.grade));
 });

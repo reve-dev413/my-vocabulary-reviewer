@@ -177,6 +177,8 @@
     <button id="backBtn" class="hidden" title="返回上一题重新评价">上一题</button>
     <button id="exportBtn" title="把复习进度保存为文件（reviewer-backup.json）">导出进度</button>
     <button id="importBtn" title="从备份文件恢复复习进度">导入进度</button>
+    <button id="uploadCloudBtn" title="上传复习进度到 GitHub Gist（私有）">☁ 上传云端</button>
+    <button id="downloadCloudBtn" title="从 GitHub Gist 恢复复习进度">☁ 从云端恢复</button>
     <input type="file" id="fileInput" accept=".json" class="hidden">
   </div>
 </header>
@@ -261,6 +263,7 @@
 <script src="knowledge-studio/web/build/data.js"></script>
 <script src="sync.js"></script>
 <script src="app.js"></script>
+<script src="cloud-sync.js"></script>
 <script>
 // 注册 Service Worker（PWA 主屏 / 离线支持）。
 // 仅 HTTPS 或 localhost 下注册；双击 index.html（file://）时静默跳过，不影响使用。
@@ -268,6 +271,13 @@ if ("serviceWorker" in navigator &&
     (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
   window.addEventListener("load", function () {
     navigator.serviceWorker.register("./service-worker.js").catch(function () {});
+    // 已有 Service Worker 控制时：新版本接管后自动刷新一次，
+    // 保证部署更新后，打开一次旧页面就能自动跳到新版（首次访问不刷新）。
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.addEventListener("controllerchange", function () {
+        window.location.reload();
+      });
+    }
   });
 }
 </script>
