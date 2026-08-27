@@ -167,6 +167,18 @@
   .modal-desc { font-size: 14px; color: #666; margin-bottom: 16px; line-height: 1.6; }
   .modal-actions { display: flex; flex-direction: column; gap: 10px; }
   .modal-actions .btn { width: 100%; margin: 0; min-width: 0; }
+  /* Token 输入框（16px 避免 iOS 聚焦自动放大） */
+  .modal-input {
+    width: 100%;
+    padding: 11px 12px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    box-sizing: border-box;
+    outline: none;
+  }
+  .modal-input:focus { border-color: #2f6fed; }
 </style>
 </head>
 <body>
@@ -253,6 +265,25 @@
       <button class="btn btn-primary" id="importMergeBtn">合并（最近复习者优先）</button>
       <button class="btn" id="importOverwriteBtn">覆盖（替换全部）</button>
       <button class="btn btn-plain" id="importCancelBtn">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- GitHub Token 输入弹窗（自定义 modal，兼容手机 Safari/Chrome，不用 window.prompt） -->
+<div id="tokenModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-title">输入 GitHub Token</div>
+    <div class="modal-desc">
+      首次使用云备份需要 GitHub Token（只需勾选 <b>gist</b> 权限，不需要 repo 权限）。<br>
+      获取：GitHub → Settings → Developer settings → Personal access tokens → 新建。<br>
+      Token 只保存在本机浏览器（gist-token），不会写入代码。
+    </div>
+    <input type="password" id="tokenInput" class="modal-input"
+           placeholder="粘贴 GitHub Token（ghp_…）"
+           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="tokenConfirmBtn">确认</button>
+      <button class="btn btn-plain" id="tokenCancelBtn">取消</button>
     </div>
   </div>
 </div>
