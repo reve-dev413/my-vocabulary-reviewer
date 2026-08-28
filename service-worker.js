@@ -51,10 +51,19 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
       const keys = await caches.keys();
-      await Promise.all(
-        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
-      );
+      const stale = keys.filter((k) => k !== CACHE_NAME);
+      await Promise.all(stale.map((k) => caches.delete(k)));
       await self.clients.claim();
+      // 冷启动破局：若存在旧缓存（说明是"更新"而非首次安装），
+      // 说明可能有一个旧的 cache-first SW 仍控制着页面、把旧外壳发给了用户。
+      // 这里强制让所有受控窗口客户端重新导航一次，立刻拿到最新外壳，
+      // 不需要用户手动注销旧 SW 或 F5。首次安装（无旧缓存）不受影响。
+      if (stale.length > 0) {
+        const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+        await Promise.all(
+          wins.map((w) => w.navigate(w.url).catch(() => {}))
+        );
+      }
     })()
   );
 });
