@@ -74,6 +74,30 @@
     return tb > ta ? b : a;
   }
 
+  // 已背词数（仅显示用，不参与同步/合并）：
+  // 当前知识库中、已有复习状态条目的记忆对象数量。
+  // 复习状态按 item.id 索引，只有"复习过至少一次"的对象才会有条目；
+  // 排除不在当前知识库中的历史残留键（旧知识版本遗留），
+  // 因此比 Object.keys(reviewState).length（含残留键的"全部条目数"）更能反映已背词数。
+  function countLearned(reviewState) {
+    const knowledge = (window.KS_DATA && window.KS_DATA.knowledge) || [];
+    const ids = new Set();
+    for (const topic of knowledge) {
+      if (topic && Array.isArray(topic.items)) {
+        for (const item of topic.items) {
+          if (item && item.id) ids.add(item.id);
+        }
+      }
+    }
+    let n = 0;
+    for (const id of Object.keys(reviewState || {})) {
+      if (!ids.has(id)) continue;
+      const s = reviewState[id];
+      if (!s || (s.reviews || 0) >= 1) n++;
+    }
+    return n;
+  }
+
   // ---- 云同步适配器预留（当前不实现任何适配器） ----
   const adapters = {};
 
@@ -81,6 +105,7 @@
     exportState: exportState,
     importState: importState,
     mergeState: mergeState,
+    countLearned: countLearned,
     registerAdapter: function (name, impl) {
       if (name && impl && typeof impl.export === "function" && typeof impl.import === "function") {
         adapters[name] = impl;
