@@ -187,7 +187,7 @@
         if (!gist || !gist.id) return; // 请求失败已提示过
         // 4. 保存 gist-id，以后恢复直接用
         try { localStorage.setItem(GIST_ID_KEY, gist.id); } catch (e) { /* 忽略 */ }
-        alert("云端备份成功，共保存 " + nUpload + " 项 ✅\n已保存为私有 Gist，可在其他设备点「从云端恢复」取回。");
+        alert("云端备份成功，已背 " + Sync.countLearned(backup.reviewState) + " 词 ✅\n已保存为私有 Gist，可在其他设备点「从云端恢复」取回。");
       });
     }).catch(function (err) {
       alert("上传失败：" + (err && err.message ? err.message : "网络错误，请检查网络后重试。"));
@@ -269,7 +269,7 @@
       return;
     }
     window.importBackupText(content, function () {
-      alert("云端恢复成功，共恢复 " + n + " 项 ✅");
+      alert("云端恢复成功，已背 " + Sync.countLearned(backup.reviewState) + " 词 ✅");
       location.reload();
     });
   }
