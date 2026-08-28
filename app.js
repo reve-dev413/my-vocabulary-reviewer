@@ -63,6 +63,9 @@ function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
 }
 
+// 加载时一次性迁移旧数据（只补 null/缺失字段，不覆盖数字、不删除任何字段）
+migrateAllState();
+
 // 记忆对象状态字段：
 //   difficulty  相对难度（0.05~0.95，越高越难记）
 //   stability   记忆半衰期（天）：预计回忆概率 R 降到 0.5 所需时间；新卡为 null
@@ -70,6 +73,41 @@ function clamp(v, lo, hi) {
 //   nextReview  下次复习时间戳（调度器唯一入口；0 = 立即到期）
 //   reviews     复习总次数（展示用，不参与计算）
 //   history     最近 50 条评价记录（调试用，不参与计算）
+
+// ---- 旧 SM-2 遗留数据迁移（只补 null/缺失的 PDM 字段，幂等） ----
+// 旧数据里 difficulty/stability/nextReview 可能是 null（旧 SM-2 版遗留）：
+// 原迁移只处理 undefined，null 被跳过 → nextReview=null 被调度器当成"最早到期"永远排第一。
+// 这里把 null 与缺失同等对待：
+//   difficulty ← ef 换算（ef 2.5→0.05 易、1.3→0.95 难）
+//   stability  ← lastIntervalDays / k（S×k ≈ 原计划间隔，平滑过渡）
+//   nextReview ← 已复习过：lastReview + 一个间隔（间隔 = S×k；无间隔信息用最短 12h）
+//                从未复习过：0（作为新卡立即到期，与原行为一致）
+// 已是数字的字段一律不动；不删除 history / reviews / n / ef / lastIntervalDays。
+function migrateLegacyState(s) {
+  if (s.difficulty == null) {
+    const ef = typeof s.ef === "number" ? s.ef : 2.2;
+    s.difficulty = clamp((2.5 - ef) / 1.2, PDM_CONFIG.dMin, PDM_CONFIG.dMax);
+  }
+  if (s.stability == null) {
+    const i = s.lastIntervalDays || 0;
+    s.stability = i > 0 ? clamp(i / K_INTERVAL, PDM_CONFIG.sMin, PDM_CONFIG.sMax) : null;
+  }
+  if (s.nextReview == null) {
+    if (typeof s.lastReview === "number" && s.lastReview > 0 && (s.reviews || 0) > 0) {
+      const days = (typeof s.stability === "number" && s.stability > 0)
+        ? Math.max(s.stability * K_INTERVAL, PDM_CONFIG.minIntervalHours / 24)
+        : PDM_CONFIG.minIntervalHours / 24;
+      s.nextReview = s.lastReview + days * MS_DAY;
+    } else {
+      s.nextReview = 0;
+    }
+  }
+}
+
+// 对全部记忆状态执行旧数据迁移（加载时 / 导入后调用）
+function migrateAllState() {
+  for (const id of Object.keys(state)) migrateLegacyState(state[id]);
+}
 
 // 惰性迁移：取某对象的记忆状态。
 // 旧数据（SM-2 简化版：n / ef / lastIntervalDays）换算为 difficulty / stability，
@@ -82,20 +120,10 @@ function ensureState(itemId) {
     state[itemId] = s;
     return s;
   }
-  if (s.difficulty === undefined) {
-    const ef = typeof s.ef === "number" ? s.ef : 2.2; // 旧默认 efInit
-    // ef 2.5 → (2.5-2.5)/1.2=0 → 钳位 0.05（易）；ef 1.3 → 1.0 → 钳位 0.95（难）
-    s.difficulty = clamp((2.5 - ef) / 1.2, PDM_CONFIG.dMin, PDM_CONFIG.dMax);
-  }
-  if (s.stability === undefined) {
-    const i = s.lastIntervalDays || 0;
-    // S = I / k，使迁移后下次间隔 ≈ 原计划（S×k = lastIntervalDays），平滑过渡
-    s.stability = i > 0 ? clamp(i / K_INTERVAL, PDM_CONFIG.sMin, PDM_CONFIG.sMax) : null;
-  }
   if (s.lastReview === undefined) s.lastReview = null;
   if (s.reviews === undefined) s.reviews = 0;
-  if (s.nextReview === undefined) s.nextReview = 0;
   if (!Array.isArray(s.history)) s.history = [];
+  migrateLegacyState(s);
   // 旧"忘记 → 4 小时"残留的 nextReview（未来但不足最短间隔）提升到最短间隔，避免上线即超短重复
   const now = Date.now();
   if (typeof s.nextReview === "number" && s.nextReview > now) {
@@ -485,6 +513,7 @@ function applyImport(mode) {
     }
     state = backup.reviewState;
   }
+  migrateAllState(); // 导入/恢复的旧数据同样迁移（旧 Gist/备份自愈）
   saveState();
   refreshReadyView();
   document.getElementById("importModal").classList.add("hidden");
