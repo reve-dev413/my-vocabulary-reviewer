@@ -481,7 +481,7 @@ function importBackupText(text, onSuccess) {
     const backup = Sync.importState(text);
     pendingImport = backup;
     afterImport = onSuccess || null;
-    document.getElementById("importCount").textContent = Object.keys(backup.reviewState).length;
+    document.getElementById("importCount").textContent = Sync.countLearned(backup.reviewState);
     document.getElementById("importModal").classList.remove("hidden");
   } catch (e) {
     alert("导入失败：不是有效的备份文件。");
