@@ -277,6 +277,72 @@
   }
   .update-btn-primary { background: #2f6fed; border-color: #2f6fed; color: #fff; }
   .update-btn:disabled { opacity: .6; cursor: default; }
+
+  /* ===== 学习统计（全屏浮层；不打断复习视图） ===== */
+  body.stats-open { overflow: hidden; }
+  .stats-overlay {
+    position: fixed; inset: 0; z-index: 150;
+    background: var(--bg);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .stats-wrap {
+    max-width: 640px; margin: 0 auto;
+    padding: 20px 16px calc(40px + env(safe-area-inset-bottom, 0px));
+  }
+  .stats-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .stats-head .btn { margin: 0; min-width: 0; min-height: 36px; padding: 8px 14px; font-size: 14px; }
+  .stats-head h2 { font-size: 18px; }
+  .stats-sub { font-size: 12px; color: var(--sub-text); line-height: 1.6; }
+  .stats-empty {
+    margin-top: 14px; padding: 14px 16px; border-radius: 10px;
+    background: var(--card-bg); color: var(--sub-text); font-size: 14px;
+    box-shadow: var(--card-shadow);
+  }
+  .stats-title { font-size: 15px; font-weight: 600; margin: 22px 0 8px; }
+  .stats-card {
+    background: var(--card-bg); border-radius: 10px;
+    padding: 6px 16px; box-shadow: var(--card-shadow);
+  }
+  .stat-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 9px 0; border-bottom: 1px dashed var(--divider);
+  }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-row .k { font-size: 14px; color: var(--text); }
+  .stat-row .v { font-size: 15px; font-weight: 600; }
+  .stats-note { font-size: 12px; color: var(--faint-text); margin: 8px 0 0; line-height: 1.6; }
+  .empty-hint { padding: 14px 0; font-size: 13px; color: var(--sub-text); line-height: 1.7; }
+
+  /* 最近 7 天列表 */
+  .d7-row { padding: 9px 0; border-bottom: 1px dashed var(--divider); }
+  .d7-row:last-child { border-bottom: none; }
+  .d7-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13px; }
+  .d7-date { color: var(--text); }
+  .d7-date .today { color: var(--accent); }
+  .d7-nums { color: var(--sub-text); text-align: right; }
+  .d7-bar { margin-top: 6px; height: 6px; background: var(--tag-bg); border-radius: 3px; overflow: hidden; }
+  .d7-bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+
+  /* 最近 30 天柱状图 */
+  .bar-chart {
+    display: flex; align-items: stretch; gap: 2px;
+    height: 150px; padding-top: 6px;
+  }
+  .bar-chart.hidden { display: none; }
+  .bcol { flex: 1; display: flex; flex-direction: column; height: 100%; min-width: 0; }
+  .bcol .bar-wrap { flex: 1; display: flex; align-items: flex-end; min-height: 0; }
+  .bcol .bar {
+    width: 100%; background: var(--accent);
+    border-radius: 2px 2px 0 0;
+  }
+  .bcol .bar.zero { background: var(--tag-bg); }
+  .bcol .blabel {
+    font-size: 9px; color: var(--faint-text);
+    text-align: center; margin-top: 3px; white-space: nowrap;
+  }
+  .bcol .blabel.hide { visibility: hidden; }
+  .chart-summary { font-size: 12px; color: var(--sub-text); margin-top: 10px; }
 </style>
 <script>
 // 深色模式：手动选择（theme-preference）优先，否则跟随系统（prefers-color-scheme）
@@ -330,6 +396,7 @@
   <div class="toolbar">
     <button id="themeBtn" title="切换到深色模式">🌙</button>
     <button id="backBtn" class="hidden" title="返回上一题重新评价">上一题</button>
+    <button id="statsBtn" title="查看学习统计（学习量 / 复习状态 / 数据积累）">📊 学习统计</button>
     <button id="exportBtn" title="把复习进度保存为文件（reviewer-backup.json）">导出进度</button>
     <button id="importBtn" title="从备份文件恢复复习进度">导入进度</button>
     <button id="uploadCloudBtn" title="上传复习进度到 GitHub Gist（私有）">☁ 上传云端</button>
@@ -399,6 +466,68 @@
   </div>
 </div>
 
+<!-- 学习统计（全屏浮层；数据实时取自复习记录，不做对错评价） -->
+<div id="statsView" class="stats-overlay hidden">
+  <div class="stats-wrap">
+    <div class="stats-head">
+      <button class="btn btn-plain" id="statsBackBtn">← 返回复习</button>
+      <h2>📊 学习统计</h2>
+    </div>
+    <p class="stats-sub">全部数据实时取自你的复习记录（reviewer-state-v1），只展示学习量与复习状态，不做对错评价。</p>
+
+    <div id="stEmptyBanner" class="stats-empty hidden">还没有学习数据：完成第一次复习后，这里会自动开始积累统计。</div>
+
+    <div class="stats-title">总体</div>
+    <div class="stats-card">
+      <div class="stat-row"><span class="k">累计学习单词/对象</span><span class="v" id="stLearned">0</span></div>
+      <div class="stat-row"><span class="k">累计复习次数</span><span class="v" id="stTotalReviews">0</span></div>
+      <div class="stat-row"><span class="k">累计学习天数</span><span class="v" id="stLearningDays">0 天</span></div>
+      <div class="stat-row"><span class="k">连续学习天数</span><span class="v" id="stStreak">0 天</span></div>
+      <div class="stat-row"><span class="k">最近一次学习日期</span><span class="v" id="stLastStudy">暂无记录</span></div>
+    </div>
+    <p class="stats-note">“学习单词/对象”按记忆对象统计（词义、搭配、例句等各算一个），与首页“已背 X 词”口径一致。</p>
+
+    <div class="stats-title">数据积累时间</div>
+    <div class="stats-card">
+      <div class="stat-row"><span class="k">开始记录</span><span class="v" id="stStartDate">暂无记录</span></div>
+      <div class="stat-row"><span class="k">已累计</span><span class="v" id="stAccumulated">0 天</span></div>
+    </div>
+    <p class="stats-note">开始记录 = 现有数据中最早一条有效复习记录。建议持续使用约一个月后再进行 PDM 优化分析。</p>
+
+    <div class="stats-title">最近 7 天</div>
+    <div class="stats-card">
+      <div id="stLast7Empty" class="empty-hint hidden">还没有复习记录：完成第一次复习后，这里会显示最近 7 天的学习情况。</div>
+      <div id="stLast7List"></div>
+      <p class="stats-note">每行：当天复习次数 · 新词数 · 总学习量；柱条 = 总学习量。</p>
+    </div>
+
+    <div class="stats-title">最近 30 天</div>
+    <div class="stats-card">
+      <div id="stLast30Empty" class="empty-hint hidden">还没有复习记录：完成第一次复习后，这里会显示最近 30 天的复习次数趋势。</div>
+      <div id="stLast30Chart" class="bar-chart hidden"></div>
+      <div id="stLast30Summary" class="chart-summary"></div>
+      <p class="stats-note">柱高 = 当天复习次数。</p>
+    </div>
+
+    <div class="stats-title">复习状态</div>
+    <div class="stats-card">
+      <div class="stat-row"><span class="k">今日待复习</span><span class="v" id="stTodayDue">0</span></div>
+      <div class="stat-row"><span class="k">当前待复习</span><span class="v" id="stNowDue">0</span></div>
+      <div class="stat-row"><span class="k">已复习过</span><span class="v" id="stLearnedStatus">0</span></div>
+      <div class="stat-row"><span class="k">未复习</span><span class="v" id="stNever">0</span></div>
+    </div>
+    <p class="stats-note">今日待复习 = 今天到期（含新词与历史遗留）；当前待复习 = 此刻已到期（与首页计数一致）。两者均含新词。</p>
+
+    <div class="stats-title">PDM 数据积累</div>
+    <div class="stats-card">
+      <div class="stat-row"><span class="k">已记录复习次数</span><span class="v" id="stPdmReviews">0</span></div>
+      <div class="stat-row"><span class="k">已记录单词/对象</span><span class="v" id="stPdmWords">0</span></div>
+      <div class="stat-row"><span class="k">数据累计时间</span><span class="v" id="stPdmDays">0 天</span></div>
+    </div>
+    <p class="stats-note">仅展示 PDM 数据积累情况；PDM 核心算法与参数未修改，也不会根据本页数据自动调整。</p>
+  </div>
+</div>
+
 <!-- 导入方式选择弹窗 -->
 <div id="importModal" class="modal-overlay hidden">
   <div class="modal-box">
@@ -436,6 +565,7 @@
 <!-- 数据来源：knowledge-studio 母数据产物（由 tools/build_web_data.py 生成）；旧 knowledge.js 保留不引用 -->
 <script src="knowledge-studio/web/build/data.js"></script>
 <script src="sync.js"></script>
+<script src="stats.js"></script>
 <script src="app.js"></script>
 <script src="cloud-sync.js"></script>
 <script src="update.js"></script>

@@ -530,6 +530,102 @@ function cancelImport() {
   document.getElementById("importModal").classList.add("hidden");
 }
 
+// ---------- 5.5 学习统计视图 ----------
+// 只读功能：每次打开都从现有复习状态实时重算（Stats.compute，见 stats.js），
+// 不新增任何存储、不写 localStorage，因此刷新/导入/覆盖/云端恢复/撤销"上一题"
+// 后统计天然与复习记录一致；本页不含任何对错评价指标。
+
+function openStats() {
+  renderStats();
+  document.getElementById("statsView").classList.remove("hidden");
+  document.body.classList.add("stats-open"); // 锁定背景滚动，浮层内独立滚动
+}
+
+function closeStats() {
+  document.getElementById("statsView").classList.add("hidden");
+  document.body.classList.remove("stats-open");
+}
+
+function renderStats() {
+  const s = Stats.compute(state, KNOWLEDGE, Date.now());
+  const el = (id) => document.getElementById(id);
+  const setText = (id, v) => { el(id).textContent = v; };
+
+  // 空数据横幅
+  el("stEmptyBanner").classList.toggle("hidden", s.hasData);
+
+  // 总体
+  setText("stLearned", s.learned);
+  setText("stTotalReviews", s.totalReviews);
+  setText("stLearningDays", s.learningDays + " 天");
+  setText("stStreak", s.streak + " 天");
+  setText("stLastStudy", s.lastStudyISO || "暂无记录");
+
+  // 数据积累时间
+  setText("stStartDate", s.firstStudyISO || "暂无记录");
+  setText("stAccumulated", s.hasData ? s.accumulatedDays + " 天" : "0 天");
+
+  // 最近 7 天
+  const l7Empty = el("stLast7Empty");
+  const l7List = el("stLast7List");
+  l7Empty.classList.toggle("hidden", s.hasData);
+  l7List.classList.toggle("hidden", !s.hasData);
+  l7List.innerHTML = "";
+  if (s.hasData) {
+    for (const d of s.last7) {
+      const row = document.createElement("div");
+      row.className = "d7-row";
+      row.innerHTML =
+        '<div class="d7-head"><span class="d7-date"></span><span class="d7-nums"></span></div>' +
+        '<div class="d7-bar"><i></i></div>';
+      const dateSpan = row.querySelector(".d7-date");
+      dateSpan.textContent = d.label + (d.today ? "（今天）" : "");
+      if (d.today) dateSpan.classList.add("today");
+      row.querySelector(".d7-nums").textContent =
+        d.reviews + " 次复习 · " + d.newWords + " 个新词 · 共 " + d.total;
+      row.querySelector(".d7-bar i").style.width =
+        (s.maxReviews7 > 0 ? Math.round((d.total / s.maxReviews7) * 100) : 0) + "%";
+      l7List.appendChild(row);
+    }
+  }
+
+  // 最近 30 天柱状图
+  const l30Empty = el("stLast30Empty");
+  const chart = el("stLast30Chart");
+  l30Empty.classList.toggle("hidden", s.hasData);
+  chart.classList.toggle("hidden", !s.hasData);
+  chart.innerHTML = "";
+  if (s.hasData) {
+    for (let i = 0; i < s.last30.length; i++) {
+      const d = s.last30[i];
+      const col = document.createElement("div");
+      col.className = "bcol";
+      const h = d.reviews > 0
+        ? Math.max(4, Math.round((d.reviews / s.maxReviews30) * 100))
+        : 2;
+      col.innerHTML =
+        '<div class="bar-wrap"><div class="bar' + (d.reviews === 0 ? " zero" : "") +
+        '" style="height:' + h + '%" title="' + d.label + "：" + d.reviews + ' 次复习"></div></div>' +
+        '<div class="blabel' + (i % 5 === 0 || i === 29 ? "" : " hide") + '">' + d.short + "</div>";
+      chart.appendChild(col);
+    }
+  }
+  setText("stLast30Summary", s.hasData
+    ? "近 30 天共复习 " + s.totalReviews30 + " 次 · 单日最高 " + s.maxReviews30 + " 次"
+    : "");
+
+  // 复习状态
+  setText("stTodayDue", s.todayDue);
+  setText("stNowDue", s.nowDue);
+  setText("stLearnedStatus", s.learned);
+  setText("stNever", s.never);
+
+  // PDM 数据积累
+  setText("stPdmReviews", s.totalReviews);
+  setText("stPdmWords", s.learned);
+  setText("stPdmDays", s.hasData ? s.accumulatedDays + " 天" : "0 天");
+}
+
 // ---------- 6. 事件绑定与启动 ----------
 
 document.getElementById("startBtn").addEventListener("click", startSession);
@@ -553,6 +649,9 @@ document.getElementById("importCancelBtn").addEventListener("click", cancelImpor
 // 云端备份（实现见 cloud-sync.js：CloudSync.uploadGist / downloadGist）
 document.getElementById("uploadCloudBtn").addEventListener("click", () => CloudSync.uploadGist());
 document.getElementById("downloadCloudBtn").addEventListener("click", () => CloudSync.downloadGist());
+// 学习统计（实现见 stats.js + 上方 5.5 节）
+document.getElementById("statsBtn").addEventListener("click", openStats);
+document.getElementById("statsBackBtn").addEventListener("click", closeStats);
 document.querySelectorAll(".grade-btn").forEach((btn) => {
   btn.addEventListener("click", () => gradeCurrent(btn.dataset.grade));
 });

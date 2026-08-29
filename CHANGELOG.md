@@ -1,5 +1,48 @@
 # CHANGELOG
 
+## [2026-08-29] 新增「学习统计」页（学习量 / 复习状态 / 数据积累观察），部署 1.7.0
+
+### 需求
+- 用户计划先正常使用网站约一个月积累真实复习数据，之后再做 PDM 优化分析。本次**只加学习统计**：不修改/重构/优化 PDM 算法与参数、不改复习流程与判定、不改数据结构、不加登录/后端/排行榜等。
+
+### 约束（已遵守）
+- 统计全部**实时计算自现有 reviewState**（`reviewer-state-v1`），不新增独立数据系统、不重复记录复习、不写死任何数字。
+- 页面**不含任何对错评价类指标**（无正确率/错误率等字样）；底层 history 的每次评价记录照常保存，未删除。
+
+### 修改
+- **新增 `stats.js`**：纯函数 `Stats.compute(state, knowledge, now)`，只读计算、不碰 localStorage/DOM。数据来源全部来自现有字段：`reviews`（累计复习次数）、`history[].time`（每日复习 / 新词归属 / 最早记录日 / 连续天数）、`nextReview`（待复习数，与调度器口径一致：新卡视为立即到期）。只统计当前知识库内的对象，排除历史残留键（与 `Sync.countLearned` 口径一致）。
+- **`index.html`**：右上角新增「📊 学习统计」按钮；新增全屏统计浮层（总体 / 数据积累时间 / 最近 7 天 / 最近 30 天柱状图 / 复习状态 / PDM 数据积累），空数据时显示合理空状态；新增对应 CSS（深浅色模式自适应）。
+- **`app.js`**：新增 `openStats / closeStats / renderStats`（每次打开实时重算）与按钮事件绑定；其余逻辑未动。
+- **`service-worker.js`**：SHELL 预缓存列表加入 `./stats.js`（离线可用）。
+- **`version.json`**：1.6.2 → 1.7.0（2026-08-29）。
+- **`README.md`**：结构表新增 stats.js 行、新增「学习统计」小节、更新已知限制文案。
+
+### 统计数据与现有字段对照
+| 统计项 | 数据来源 |
+|---|---|
+| 累计学习单词/对象 | 知识库内 `reviews ≥ 1` 的对象数 |
+| 累计复习次数 | 知识库内各对象 `reviews` 之和 |
+| 累计学习天数 / 连续学习天数 / 最近一次学习日期 / 开始记录 | `history[].time`（缺失时退回 `lastReview`），按本地日去重 |
+| 最近 7/30 天每日复习次数 | `history[].time` 落在当日窗口内计数 |
+| 每日新词数 | 仅对 history 完整（条数 == reviews，未被 50 条上限截断）的对象，按最早一条 history 归属 |
+| 今日 / 当前待复习 | `nextReview ≤ 今日结束 / 现在`（新卡视为 0 到期） |
+| PDM 数据积累 | 同上（复习次数 / 已学对象 / 开始记录至今天数） |
+
+### 验证
+- 4 个 JS 文件 `node --check` 通过；`Stats.compute` 单元测试 **48/48 通过**（新用户无数据 / 完成一次复习 / 连续复习多天 / 断档 / history 截断 / 残留键排除 / 撤销与导入恢复后重算一致 / 到期口径）。
+- 无头浏览器截图验证空状态与有数据状态：无 NaN / undefined，数字与手算一致（如 9 对象 22 次复习、7 天、单日最高 8 次、开始记录 2026-08-23）。
+- 根目录与 `deploy/` 五份改动文件 SHA256 一致。
+
+### 修改的文件
+- 新增：`stats.js`（根 + `deploy/stats.js`）
+- 修改：`index.html`、`app.js`、`service-worker.js`、`version.json`（根 + deploy 同步）、`README.md`、`CHANGELOG.md`
+- 未动：`PDM_CONFIG` / `applyReview` / `buildReviewQueue` / `sync.js` / `cloud-sync.js` / `update.js` / 复习流程与数据结构。
+
+### 部署
+- 用 GitHub Desktop 提交推送（根目录 + `deploy/` 里的 `app.js`、`index.html`、`stats.js`、`service-worker.js`、`version.json`）；线上打开 App 会自动提示更新（version.json 已升 1.7.0），更新后右上角出现「📊 学习统计」。
+
+---
+
 ## [2026-08-28] 云端提示文案：显示"已背词数"而非"全部条目数"
 
 ### 需求

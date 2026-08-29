@@ -18,6 +18,7 @@ const SHELL = [
   "./index.html",
   "./app.js",
   "./sync.js",
+  "./stats.js",
   "./cloud-sync.js",
   "./update.js",
   "./knowledge-studio/web/build/data.js",
