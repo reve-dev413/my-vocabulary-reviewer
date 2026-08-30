@@ -262,21 +262,19 @@ function updateBackBtn() {
 function setActionBar(mode) {
   const bar = document.getElementById("actionBar");
   if (!bar) return;
-  const gradeOpts = document.getElementById("gradeOptions");
-  const judgeOpts = document.getElementById("judgeOptions");
-  if (!gradeOpts || !judgeOpts) return;
-  if (mode === "grade") {
+  const map = { grade: "gradeOptions", judge: "judgeOptions", ready: "readyOptions", done: "doneOptions" };
+  if (mode === "grade" || mode === "judge" || mode === "ready" || mode === "done") {
     bar.classList.add("expanded");
-    gradeOpts.classList.remove("hidden");
-    judgeOpts.classList.add("hidden");
-  } else if (mode === "judge") {
-    bar.classList.add("expanded");
-    gradeOpts.classList.add("hidden");
-    judgeOpts.classList.remove("hidden");
+    for (const key of Object.keys(map)) {
+      const el = document.getElementById(map[key]);
+      if (el) el.classList.toggle("hidden", key !== mode);
+    }
   } else {
     bar.classList.remove("expanded");
-    gradeOpts.classList.add("hidden");
-    judgeOpts.classList.add("hidden");
+    for (const key of Object.keys(map)) {
+      const el = document.getElementById(map[key]);
+      if (el) el.classList.add("hidden");
+    }
   }
 }
 
@@ -311,7 +309,7 @@ function refreshReadyView() {
   document.getElementById("gradeView").classList.add("hidden");
   document.getElementById("judgeView").classList.add("hidden");
   document.getElementById("doneView").classList.add("hidden");
-  setActionBar("collapsed");
+  setActionBar("ready");
   document.body.classList.remove("reviewing");
   updateBackBtn();
 }
@@ -505,7 +503,7 @@ function finishSession() {
   document.getElementById("recallView").classList.add("hidden");
   document.getElementById("gradeView").classList.add("hidden");
   document.getElementById("judgeView").classList.add("hidden");
-  setActionBar("collapsed");
+  setActionBar("done");
   document.body.classList.remove("reviewing");
 }
 
@@ -681,6 +679,7 @@ function renderStats() {
 // ---------- 6. 事件绑定与启动 ----------
 
 document.getElementById("startBtn").addEventListener("click", startSession);
+document.getElementById("readyView").addEventListener("click", startSession);
 document.getElementById("recallView").addEventListener("click", revealAnswer);
 document.getElementById("againBtn").addEventListener("click", startSession);
 document.getElementById("backBtn").addEventListener("click", goBack);
