@@ -38,6 +38,15 @@
     --on-accent: #ffffff;
     --accent-on-dark: #2997ff;
     --hl-red: #d33;
+    /* 记忆程度（莫兰迪 · 亮色） */
+    --grade-forget: #D47373;
+    --grade-hard: #D4A373;
+    --grade-remember: #73B883;
+    --grade-easy: #7394B8;
+    --judge-wrong: #D47373;
+    --judge-right: #73B883;
+    --home-indicator: #CCCCCC;
+    --option-divider: rgba(0,0,0,.12);
     --btn-bg: #ffffff;
     --btn-border: rgba(0,0,0,.12);
     --btn-plain-bg: rgba(0,0,0,.05);
@@ -69,6 +78,15 @@
     --accent-focus: #2997ff;
     --on-accent: #ffffff;
     --hl-red: #ff6b6b;
+    /* 记忆程度（莫兰迪 · 暗色） */
+    --grade-forget: #C45C5C;
+    --grade-hard: #C4945C;
+    --grade-remember: #5C9E6E;
+    --grade-easy: #5C7E9E;
+    --judge-wrong: #C45C5C;
+    --judge-right: #5C9E6E;
+    --home-indicator: #555555;
+    --option-divider: rgba(255,255,255,.16);
     --btn-bg: #1d1d1f;
     --btn-border: rgba(255,255,255,.22);
     --btn-plain-bg: rgba(255,255,255,.08);
@@ -147,6 +165,7 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
+    position: relative;
   }
   .tag {
     display: inline-block;
@@ -201,13 +220,125 @@
   .btn:focus-visible, .toolbar button:focus-visible, .modal-input:focus-visible { outline: 2px solid var(--accent-focus); outline-offset: 2px; }
   .btn-primary { background: #0066cc; color: #fff; }   /* Action Blue：亮/暗面通用 */
   .btn-plain { background: var(--btn-plain-bg); color: var(--text); border: 1px solid var(--btn-border); }
-  .grade-btn { background: var(--grade-bg); color: var(--text); border: 1.5px solid var(--grade-border); font-size: 17px; }
-  .grade-btn:hover { border-color: var(--accent); }
   .hidden { display: none; }
   .count { font-size: 16px; color: var(--count-text); margin: 12px 0 24px; }
   .progress { font-size: 13px; color: var(--progress-text); margin-bottom: 10px; }
   .finished { font-size: 18px; font-weight: 600; margin: 12px 0 20px; }
   footer { margin-top: 16px; font-size: 12px; color: var(--footer-text); }
+
+  /* ===== 卡片交互：整卡点击显示答案 + 底部操作层（细横线 / 展开为记忆程度） ===== */
+  #recallView { cursor: pointer; padding-bottom: 20px; }
+  #gradeView, #judgeView { padding-bottom: 56px; }
+  .recall-hint {
+    font-size: 12px;
+    color: var(--faint-text);
+    opacity: .55;
+    margin-top: 18px;
+    user-select: none;
+  }
+  #recallView:hover .recall-hint { opacity: .85; }
+
+  /* 底部操作层：默认 4px 细横线（iOS Home Indicator）；.expanded 展开为 48px 选项区 */
+  .action-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    overflow: hidden;
+    background: var(--card-bg);
+    color: var(--text);
+    transition: height .25s cubic-bezier(.4, 0, .2, 1);
+  }
+  .action-bar.expanded { height: 48px; }
+  /* 顶部分割线（展开时显示） */
+  .action-bar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 12px;
+    right: 12px;
+    height: 1px;
+    background: currentColor;
+    opacity: 0;
+    transition: opacity .2s ease;
+  }
+  .action-bar.expanded::before { opacity: .5; }
+  /* Home Indicator：仅复习进行中、操作层未展开时显示 */
+  .home-bar {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: 112px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--home-indicator);
+    opacity: 0;
+    transition: opacity .2s ease;
+  }
+  body.reviewing .action-bar:not(.expanded) .home-bar { opacity: .9; }
+
+  .action-options {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: stretch;
+  }
+  .action-options.hidden { display: none; }
+  .option {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    padding: 0;
+    opacity: 1;                    /* 基础可见：展开动画只做入场淡入，不依赖它决定最终显示 */
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color .15s ease, color .15s ease;
+    user-select: none;
+  }
+  .option:focus-visible { outline: 2px solid var(--accent-focus); outline-offset: -2px; }
+  .action-bar.expanded .option { animation: optFade .3s ease both; }
+  .action-bar.expanded .option:nth-child(2) { animation-delay: .05s; }
+  .action-bar.expanded .option:nth-child(3) { animation-delay: .1s; }
+  .action-bar.expanded .option:nth-child(4) { animation-delay: .15s; }
+  .option + .option { border-left: 1px solid var(--option-divider); }
+  .option::after {
+    content: '';
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: .85;
+  }
+  /* 选项颜色（莫兰迪） */
+  .option[data-grade="忘记"] { color: var(--grade-forget); }
+  .option[data-grade="困难"] { color: var(--grade-hard); }
+  .option[data-grade="记得"] { color: var(--grade-remember); }
+  .option[data-grade="简单"] { color: var(--grade-easy); }
+  .option[data-judge="false"] { color: var(--judge-wrong); }
+  .option[data-judge="true"] { color: var(--judge-right); }
+  /* Hover：极轻微变亮 */
+  .option:hover { background: rgba(0, 0, 0, .02); }
+  [data-theme="dark"] .option:hover { background: rgba(255, 255, 255, .03); }
+
+  @keyframes optFade {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* 答案 → 下一张：整卡滑出 / 滑入 */
+  .card { transition: transform .22s ease, opacity .22s ease; }
+  .card.anim-out { transform: translateX(-64px); opacity: 0; }
+  .card.anim-in { transform: translateX(64px); opacity: 0; }
 
   /* ===== 移动端 / PWA 适配（全部圈定范围，PC 外观不变） ===== */
   html, body { overflow-x: hidden; }
@@ -229,8 +360,6 @@
     .card { padding: 24px 20px; border-radius: 14px; }
     .prompt { font-size: 24px; }
     .answer { font-size: 17px; }
-    .grade-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .grade-row .btn { width: 100%; margin: 0; min-width: 0; }
   }
 
   /* 平板（iPad 竖屏等）：卡片与字号适度加大 */
@@ -282,11 +411,7 @@
   }
   .modal-input:focus { border-color: var(--accent); }
 
-  /* ===== 深色模式：四档评价按钮（半透明 Apple 色调） ===== */
-  [data-theme="dark"] .grade-btn[data-grade="忘记"] { background: rgba(255,69,58,.16); border-color: rgba(255,69,58,.5); color: #ffb4a8; }
-  [data-theme="dark"] .grade-btn[data-grade="困难"] { background: rgba(255,159,10,.16); border-color: rgba(255,159,10,.5); color: #ffd9a8; }
-  [data-theme="dark"] .grade-btn[data-grade="记得"] { background: rgba(52,199,89,.16); border-color: rgba(52,199,89,.5); color: #b7e4c2; }
-  [data-theme="dark"] .grade-btn[data-grade="简单"] { background: rgba(0,113,227,.18); border-color: rgba(0,113,227,.55); color: #b8d9ff; }
+  /* ===== 深色模式：记忆程度选项颜色（已由主题变量定义，悬停极微亮） ===== */
 
   /* ===== 版本更新提示（update.js 动态创建，深浅色自适应） ===== */
   .update-box {
@@ -459,7 +584,7 @@
     <span class="tag" id="typeTag"></span>
     <div class="topic-name" id="topicName"></div>
     <div class="prompt" id="promptText"></div>
-    <button class="btn btn-primary" id="showAnswerBtn">显示答案</button>
+    <div class="recall-hint">点击卡片任意位置显示答案</div>
   </div>
 
   <!-- 复习状态：评价 -->
@@ -474,12 +599,6 @@
       <div id="materialsList"></div>
     </div>
     <div class="related hidden" id="relatedBox"></div>
-    <div class="grade-row">
-      <button class="btn grade-btn" data-grade="忘记">忘记</button>
-      <button class="btn grade-btn" data-grade="困难">困难</button>
-      <button class="btn grade-btn" data-grade="记得">记得</button>
-      <button class="btn grade-btn" data-grade="简单">简单</button>
-    </div>
   </div>
 
   <!-- 复习状态：判断题 -->
@@ -488,10 +607,6 @@
     <span class="tag" id="judgeType"></span>
     <div class="topic-name" id="judgeTopic"></div>
     <div class="prompt" id="judgePrompt"></div>
-    <div id="judgeButtons">
-      <button class="btn grade-btn" id="judgeTrueBtn">✅ 对</button>
-      <button class="btn grade-btn" id="judgeFalseBtn">❌ 错</button>
-    </div>
     <div class="answer hidden" id="judgeAnswerBox">
       <div id="judgeResult"></div>
       <div id="judgeAnswerText"></div>
@@ -504,6 +619,21 @@
     <div class="finished">✅ 本轮复习完成</div>
     <div id="doneSummary" class="count"></div>
     <button class="btn btn-plain" id="againBtn">再复习一轮</button>
+  </div>
+
+  <!-- 底部操作层：细横线指示器 / 展开为四档记忆程度或判断题两档 -->
+  <div class="action-bar" id="actionBar">
+    <div class="home-bar"></div>
+    <div class="action-options hidden" id="gradeOptions">
+      <button class="option" data-grade="忘记">忘记</button>
+      <button class="option" data-grade="困难">困难</button>
+      <button class="option" data-grade="记得">记得</button>
+      <button class="option" data-grade="简单">简单</button>
+    </div>
+    <div class="action-options hidden" id="judgeOptions">
+      <button class="option" id="judgeFalseBtn" data-judge="false">❌ 错</button>
+      <button class="option" id="judgeTrueBtn" data-judge="true">✅ 对</button>
+    </div>
   </div>
 </div>
 
@@ -603,7 +733,7 @@
 
 <footer>
   <div>纯本地运行 · 数据只保存在你的浏览器中 · 记得定期「导出进度」</div>
-  <div>v1.8.0</div>
+  <div>v1.9.0</div>
 </footer>
 
 <!-- 数据来源：knowledge-studio 母数据产物（由 tools/build_web_data.py 生成）；旧 knowledge.js 保留不引用 -->
