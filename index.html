@@ -8,71 +8,87 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="今天你记了吗">
-<meta name="theme-color" content="#2f6fed" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#1d2126" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
 <style>
   /* ===== 主题变量：浅色（默认）= 原配色不变；深色模式覆盖 ===== */
+  /* ===== Apple 设计风格变量（来源：awesome-design-md/design-md/apple/DESIGN.md） ===== */
   :root {
-    --bg: #f4f4f4;
-    --text: #333;
-    --card-bg: #fff;
-    --card-shadow: 0 2px 8px rgba(0,0,0,.08);
-    --tag-bg: #eee;
-    --tag-text: #666;
-    --sub-text: #888;
-    --faint-text: #999;
-    --btn-bg: #fff;
-    --btn-border: #bbb;
-    --btn-plain-bg: #eee;
-    --grade-bg: #fff;
-    --grade-border: #ccc;
-    --materials-text: #555;
-    --divider: #ddd;
-    --count-text: #555;
-    --progress-text: #999;
-    --footer-text: #aaa;
-    --modal-mask: rgba(0,0,0,.45);
-    --modal-bg: #fff;
-    --modal-desc-text: #666;
-    --input-bg: #fff;
-    --input-border: #ccc;
+    /* 表面：白 / 米白（parchment） */
+    --bg: #f5f5f7;
+    --card-bg: #ffffff;
+    --card-border: rgba(0,0,0,.08);
+    --card-shadow: none;          /* Apple 原则：卡片不用投影，只用 hairline 描边 */
+    /* 文字（ink 系） */
+    --text: #1d1d1f;
+    --sub-text: #6e6e73;
+    --faint-text: #86868b;
+    --count-text: #6e6e73;
+    --progress-text: #86868b;
+    --footer-text: #86868b;
+    --materials-text: #424245;
+    --tag-text: #6e6e73;
+    --tag-bg: rgba(0,0,0,.05);
+    /* 交互：单一 Action Blue #0066cc */
+    --accent: #0066cc;
+    --accent-focus: #0071e3;
+    --on-accent: #ffffff;
+    --accent-on-dark: #2997ff;
     --hl-red: #d33;
-    --accent: #2f6fed;
+    --btn-bg: #ffffff;
+    --btn-border: rgba(0,0,0,.12);
+    --btn-plain-bg: rgba(0,0,0,.05);
+    --grade-bg: #ffffff;
+    --grade-border: #d2d2d7;
+    /* 弹窗 / 表单 */
+    --modal-mask: rgba(0,0,0,.4);
+    --modal-bg: #ffffff;
+    --modal-desc-text: #6e6e73;
+    --input-bg: #ffffff;
+    --input-border: rgba(0,0,0,.12);
+    --divider: rgba(0,0,0,.08);
   }
+  /* 深色模式：Apple 暗面 tile（#000 / #1d1d1f / #2a2a2c） */
   [data-theme="dark"] {
-    --bg: #1d2126;
-    --text: #e8eaed;
-    --card-bg: #272c33;
-    --card-shadow: 0 2px 14px rgba(0,0,0,.45);
-    --tag-bg: #363c45;
-    --tag-text: #aeb6c0;
-    --sub-text: #9aa3ad;
-    --faint-text: #8a93a0;
-    --btn-bg: #2f353d;
-    --btn-border: #4a525c;
-    --btn-plain-bg: #333a42;
-    --grade-bg: #2f353d;
-    --grade-border: #4a525c;
-    --materials-text: #b6bdc6;
-    --divider: #3a4149;
-    --count-text: #c2c8d0;
-    --progress-text: #98a1ab;
-    --footer-text: #6d7681;
-    --modal-mask: rgba(0,0,0,.6);
-    --modal-bg: #272c33;
-    --modal-desc-text: #a9b1bb;
-    --input-bg: #22262b;
-    --input-border: #4a525c;
-    --hl-red: #ff8a80;
-    --accent: #6f9bff;
+    --bg: #000000;
+    --card-bg: #1d1d1f;
+    --card-border: rgba(255,255,255,.14);
+    --text: #f5f5f7;
+    --sub-text: #a1a1a6;
+    --faint-text: #86868b;
+    --count-text: #c7c7cc;
+    --progress-text: #86868b;
+    --footer-text: #6e6e73;
+    --materials-text: #d2d2d7;
+    --tag-text: #a1a1a6;
+    --tag-bg: rgba(255,255,255,.1);
+    --accent: #2997ff;            /* 暗面文字链接用 Sky Blue */
+    --accent-focus: #2997ff;
+    --on-accent: #ffffff;
+    --hl-red: #ff6b6b;
+    --btn-bg: #1d1d1f;
+    --btn-border: rgba(255,255,255,.22);
+    --btn-plain-bg: rgba(255,255,255,.08);
+    --grade-bg: #2a2a2c;
+    --grade-border: rgba(255,255,255,.24);
+    --modal-mask: rgba(0,0,0,.7);
+    --modal-bg: #1d1d1f;
+    --modal-desc-text: #a1a1a6;
+    --input-bg: #000000;
+    --input-border: rgba(255,255,255,.24);
+    --divider: rgba(255,255,255,.14);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
   body {
-    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 17px;
+    line-height: 1.47;
+    -webkit-font-smoothing: antialiased;
     background: var(--bg);
     color: var(--text);
     display: flex;
@@ -84,32 +100,48 @@
     padding-top: calc(20px + env(safe-area-inset-top, 0px));
     padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   }
+  /* ===== 顶部导航：Apple global-nav（纯黑全宽条，44px） ===== */
   header {
-    width: 100%;
-    max-width: 640px;
+    width: calc(100% + 40px);
+    margin: -20px -20px 20px;
+    min-height: 44px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    padding: 8px 20px;
+    background: #000000;
+    color: #f5f5f7;
   }
-  h1 { font-size: 20px; }
+  [data-theme="dark"] header { border-bottom: 1px solid rgba(255,255,255,.1); }
+  h1 { font-size: 21px; font-weight: 600; letter-spacing: -0.01em; color: #f5f5f7; }
+  .toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
   .toolbar button {
-    margin-left: 8px;
-    padding: 5px 10px;
-    font-size: 13px;
-    border: 1px solid var(--btn-border);
-    background: var(--btn-bg);
-    color: var(--text);
-    border-radius: 4px;
+    margin: 0;
+    padding: 6px 12px;
+    font-size: 12px;
+    letter-spacing: -0.01em;
+    border: 1px solid #2a2a2c;
+    background: #1d1d1f;
+    color: #f5f5f7;
+    border-radius: 8px;           /* rounded.sm：紧凑工具按钮 */
     cursor: pointer;
+    min-height: 30px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color .12s ease, transform .12s ease;
   }
+  .toolbar button:hover { background: #2a2a2c; }
+  .toolbar button:active { transform: scale(.95); }
+  /* ===== 复习卡片：白底 · 18px 圆角 · hairline 描边（无投影） ===== */
   .card {
     width: 100%;
     max-width: 640px;
     background: var(--card-bg);
-    border-radius: 10px;
-    padding: 28px 24px;
-    box-shadow: var(--card-shadow);
+    border: 1px solid var(--card-border);
+    border-radius: 18px;          /* rounded.lg */
+    padding: 36px 28px;
     text-align: center;
     min-height: 320px;
     display: flex;
@@ -118,21 +150,21 @@
   }
   .tag {
     display: inline-block;
-    font-size: 12px;
+    font-size: 13px;
     color: var(--tag-text);
     background: var(--tag-bg);
-    border-radius: 4px;
-    padding: 2px 8px;
-    margin-bottom: 12px;
+    border-radius: 9999px;        /* pill */
+    padding: 4px 12px;
+    margin-bottom: 14px;
   }
   .topic-name { font-size: 14px; color: var(--sub-text); margin-bottom: 8px; }
-  .prompt { font-size: 22px; line-height: 1.6; margin: 12px 0 20px; word-break: break-word; }
+  .prompt { font-size: 28px; font-weight: 600; line-height: 1.4; letter-spacing: -0.01em; margin: 12px 0 24px; word-break: break-word; }
   .prompt-in-answer { font-size: 13px; color: var(--faint-text); margin: 4px 0 2px; line-height: 1.6; word-break: break-word; }
   .hl-red { color: var(--hl-red); font-weight: 600; }
   .answer {
     font-size: 17px;
     line-height: 1.8;
-    margin: 12px 0 16px;
+    margin: 12px 0 18px;
     text-align: left;
     white-space: pre-line;
     word-break: break-word;
@@ -141,35 +173,40 @@
     text-align: left;
     font-size: 14px;
     color: var(--materials-text);
-    border-top: 1px dashed var(--divider);
-    padding-top: 12px;
+    border-top: 1px solid var(--divider);
+    padding-top: 14px;
     margin-top: 8px;
     line-height: 1.7;
   }
   .materials .m-title { font-size: 12px; color: var(--faint-text); margin-bottom: 6px; }
   .materials p { margin-bottom: 6px; word-break: break-word; }
   .related { font-size: 13px; color: var(--sub-text); margin-top: 10px; }
+  /* ===== 按钮：Apple pill 语法；按下 scale(0.95) 微交互 ===== */
   .btn {
     display: inline-block;
     border: none;
-    border-radius: 6px;
-    padding: 12px 28px;
-    font-size: 16px;
+    border-radius: 9999px;        /* pill：签名式动作按钮 */
+    padding: 11px 22px;
+    font-size: 17px;
+    font-weight: 400;
     cursor: pointer;
     margin: 6px;
     min-width: 110px;
-    min-height: 48px;
+    min-height: 44px;             /* Apple 最小触控目标 44px */
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+    transition: transform .12s ease, border-color .12s ease, background-color .12s ease;
   }
-  .btn-primary { background: #2f6fed; color: #fff; }
-  .btn-plain { background: var(--btn-plain-bg); color: var(--text); }
+  .btn:active { transform: scale(.95); }
+  .btn:focus-visible, .toolbar button:focus-visible, .modal-input:focus-visible { outline: 2px solid var(--accent-focus); outline-offset: 2px; }
+  .btn-primary { background: #0066cc; color: #fff; }   /* Action Blue：亮/暗面通用 */
+  .btn-plain { background: var(--btn-plain-bg); color: var(--text); border: 1px solid var(--btn-border); }
   .grade-btn { background: var(--grade-bg); color: var(--text); border: 1.5px solid var(--grade-border); font-size: 17px; }
   .grade-btn:hover { border-color: var(--accent); }
   .hidden { display: none; }
   .count { font-size: 16px; color: var(--count-text); margin: 12px 0 24px; }
   .progress { font-size: 13px; color: var(--progress-text); margin-bottom: 10px; }
-  .finished { font-size: 18px; margin: 12px 0 20px; }
+  .finished { font-size: 18px; font-weight: 600; margin: 12px 0 20px; }
   footer { margin-top: 16px; font-size: 12px; color: var(--footer-text); }
 
   /* ===== 移动端 / PWA 适配（全部圈定范围，PC 外观不变） ===== */
@@ -182,10 +219,14 @@
       padding-top: calc(12px + env(safe-area-inset-top, 0px));
       padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
     }
-    header { flex-wrap: wrap; gap: 8px; }
-    .toolbar { display: flex; flex-wrap: wrap; gap: 6px; }
+    header {
+      width: calc(100% + 24px);
+      margin: -12px -12px 16px;
+      padding: 8px 12px;
+    }
+    .toolbar { gap: 6px; }
     .toolbar button { margin-left: 0; }
-    .card { padding: 20px 16px; }
+    .card { padding: 24px 20px; border-radius: 14px; }
     .prompt { font-size: 24px; }
     .answer { font-size: 17px; }
     .grade-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -216,35 +257,36 @@
   }
   .modal-overlay.hidden { display: none; }
   .modal-box {
-    background: var(--modal-bg); border-radius: 12px;
-    padding: 22px 24px; width: 100%; max-width: 360px;
+    background: var(--modal-bg); border: 1px solid var(--card-border); border-radius: 18px;
+    padding: 24px; width: 100%; max-width: 360px;
     text-align: center;
-    box-shadow: 0 8px 24px rgba(0,0,0,.2);
   }
   .modal-title { font-size: 17px; font-weight: 600; margin-bottom: 10px; }
   .modal-desc { font-size: 14px; color: var(--modal-desc-text); margin-bottom: 16px; line-height: 1.6; }
   .modal-actions { display: flex; flex-direction: column; gap: 10px; }
   .modal-actions .btn { width: 100%; margin: 0; min-width: 0; }
-  /* Token 输入框（16px 避免 iOS 聚焦自动放大） */
+  /* Token 输入框（16px 避免 iOS 聚焦自动放大；pill 造型） */
   .modal-input {
     width: 100%;
-    padding: 11px 12px;
+    height: 44px;
+    padding: 0 20px;
     font-size: 16px;
     border: 1px solid var(--input-border);
-    border-radius: 6px;
+    border-radius: 9999px;
     margin-bottom: 16px;
     box-sizing: border-box;
     outline: none;
     background: var(--input-bg);
     color: var(--text);
+    transition: border-color .12s ease;
   }
   .modal-input:focus { border-color: var(--accent); }
 
-  /* ===== 深色模式：四档评价按钮颜色（浅色模式保持原样不变） ===== */
-  [data-theme="dark"] .grade-btn[data-grade="忘记"] { background: #5c2b2b; border-color: #a05555; color: #ffd6d6; }
-  [data-theme="dark"] .grade-btn[data-grade="困难"] { background: #5c3a20; border-color: #a8783f; color: #ffe4c9; }
-  [data-theme="dark"] .grade-btn[data-grade="记得"] { background: #24502e; border-color: #4a8a55; color: #d3f0da; }
-  [data-theme="dark"] .grade-btn[data-grade="简单"] { background: #24415e; border-color: #4a72a8; color: #d3e5ff; }
+  /* ===== 深色模式：四档评价按钮（半透明 Apple 色调） ===== */
+  [data-theme="dark"] .grade-btn[data-grade="忘记"] { background: rgba(255,69,58,.16); border-color: rgba(255,69,58,.5); color: #ffb4a8; }
+  [data-theme="dark"] .grade-btn[data-grade="困难"] { background: rgba(255,159,10,.16); border-color: rgba(255,159,10,.5); color: #ffd9a8; }
+  [data-theme="dark"] .grade-btn[data-grade="记得"] { background: rgba(52,199,89,.16); border-color: rgba(52,199,89,.5); color: #b7e4c2; }
+  [data-theme="dark"] .grade-btn[data-grade="简单"] { background: rgba(0,113,227,.18); border-color: rgba(0,113,227,.55); color: #b8d9ff; }
 
   /* ===== 版本更新提示（update.js 动态创建，深浅色自适应） ===== */
   .update-box {
@@ -255,9 +297,8 @@
     z-index: 200;
     background: var(--modal-bg);
     color: var(--text);
-    border: 1px solid var(--input-border);
-    border-radius: 10px;
-    box-shadow: 0 4px 18px rgba(0,0,0,.25);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
     padding: 12px 18px;
     min-width: 240px;
     max-width: 90vw;
@@ -268,14 +309,14 @@
   .update-btn {
     padding: 8px 16px;
     font-size: 14px;
-    border-radius: 6px;
+    border-radius: 9999px;
     border: 1px solid var(--input-border);
     background: var(--btn-bg);
     color: var(--text);
     cursor: pointer;
     min-height: 36px;
   }
-  .update-btn-primary { background: #2f6fed; border-color: #2f6fed; color: #fff; }
+  .update-btn-primary { background: #0066cc; border-color: #0066cc; color: #fff; }
   .update-btn:disabled { opacity: .6; cursor: default; }
 
   /* ===== 学习统计（全屏浮层；不打断复习视图） ===== */
@@ -295,14 +336,14 @@
   .stats-head h2 { font-size: 18px; }
   .stats-sub { font-size: 12px; color: var(--sub-text); line-height: 1.6; }
   .stats-empty {
-    margin-top: 14px; padding: 14px 16px; border-radius: 10px;
+    margin-top: 14px; padding: 14px 16px; border-radius: 14px;
     background: var(--card-bg); color: var(--sub-text); font-size: 14px;
-    box-shadow: var(--card-shadow);
+    border: 1px solid var(--card-border);
   }
   .stats-title { font-size: 15px; font-weight: 600; margin: 22px 0 8px; }
   .stats-card {
-    background: var(--card-bg); border-radius: 10px;
-    padding: 6px 16px; box-shadow: var(--card-shadow);
+    background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 18px;
+    padding: 6px 16px;
   }
   .stat-row {
     display: flex; justify-content: space-between; align-items: baseline;
@@ -560,7 +601,10 @@
   </div>
 </div>
 
-<footer>纯本地运行 · 数据只保存在你的浏览器中 · 记得定期「导出进度」</footer>
+<footer>
+  <div>纯本地运行 · 数据只保存在你的浏览器中 · 记得定期「导出进度」</div>
+  <div>v1.8.0</div>
+</footer>
 
 <!-- 数据来源：knowledge-studio 母数据产物（由 tools/build_web_data.py 生成）；旧 knowledge.js 保留不引用 -->
 <script src="knowledge-studio/web/build/data.js"></script>

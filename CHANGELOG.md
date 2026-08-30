@@ -1,5 +1,39 @@
 # CHANGELOG
 
+## [2026-08-31] 页脚显示版本号
+
+- `index.html`（根 + deploy 同步）：页脚「导出进度」提示下方新增一行版本号 `v1.8.0`（继承页脚字体/格式/颜色，与 `version.json` 保持一致）。
+- 根与 deploy 的 index.html SHA256 一致校验通过。
+- 修改：`index.html`（根 + deploy）、`CHANGELOG.md`。
+
+---
+
+## [2026-08-31] 界面改版为 Apple 设计风格（依据 awesome-design-md 的 apple DESIGN.md），部署 1.8.0
+
+### 需求
+- 将 GitHub 热门项目 [awesome-design-md](https://github.com/VoltAgent/awesome-design-md) 中 **apple** 的设计风格应用到复习器（线上地址 https://reve-dev413.github.io/my-vocabulary-reviewer/ ）。
+
+### 改动范围（纯外观，逻辑零改动）
+- **`index.html`（根 + deploy 同步）**：重写 `<style>` 为 Apple 设计令牌体系——
+  - 颜色：Action Blue `#0066cc` 单一交互蓝；亮面白/米白 `#f5f5f7`；暗面近黑 `#000/#1d1d1f/#2a2a2c`；暗面链接用 Sky Blue `#2997ff`。
+  - 顶部导航改为 Apple global-nav 纯黑全宽条（44px，工具按钮为 8px 圆角暗色胶囊）。
+  - 复习卡片：白底 18px 圆角 + hairline 描边，**去除卡片投影**（Apple 原则：无装饰阴影）。
+  - 按钮：签名式 pill（9999px 圆角），按下 `scale(0.95)` 微交互，聚焦环 2px `#0071e3`。
+  - 深色模式四档评价按钮改为半透明 Apple 色调；弹窗/输入框（pill）/统计卡片同步新风格。
+  - 字体栈：`-apple-system / SF Pro Text / system-ui / PingFang SC / Microsoft YaHei`。
+- **`manifest.json`**：`background_color` → `#f5f5f7`、`theme_color` → `#000000`。
+- **`version.json`**：1.7.0 → 1.8.0（2026-08-31）；SW 缓存名随版本自动更换，无需改 service-worker.js。
+- **未动**：PDM 算法 / 调度器 / 数据结构 / 复习流程 / sync / cloud-sync / update / stats 逻辑、HTML 结构与全部 ID。
+
+### 验证
+- 本地截图（浅色/深色）目检通过：黑色导航条、白色 18px 圆角卡片、蓝色 pill 按钮、无卡片阴影。
+- 根与 deploy 的 index.html / manifest.json / version.json SHA256 一致。
+
+### 部署
+- 由 GitHub Desktop 提交推送（根 + deploy 两份），线上打开后 update.js 会提示「发现新版本 v1.8.0」。
+
+---
+
 ## [2026-08-29] 新增「学习统计」页（学习量 / 复习状态 / 数据积累观察），部署 1.7.0
 
 ### 需求
