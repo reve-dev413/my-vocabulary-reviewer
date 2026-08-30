@@ -258,6 +258,51 @@ function updateBackBtn() {
   else btn.classList.add("hidden");
 }
 
+// 底部操作层：细横线(recall/collapsed) ↔ 展开为四档记忆(grade) / 判断题两档(judge)
+function setActionBar(mode) {
+  const bar = document.getElementById("actionBar");
+  if (!bar) return;
+  const gradeOpts = document.getElementById("gradeOptions");
+  const judgeOpts = document.getElementById("judgeOptions");
+  if (!gradeOpts || !judgeOpts) return;
+  if (mode === "grade") {
+    bar.classList.add("expanded");
+    gradeOpts.classList.remove("hidden");
+    judgeOpts.classList.add("hidden");
+  } else if (mode === "judge") {
+    bar.classList.add("expanded");
+    gradeOpts.classList.add("hidden");
+    judgeOpts.classList.remove("hidden");
+  } else {
+    bar.classList.remove("expanded");
+    gradeOpts.classList.add("hidden");
+    judgeOpts.classList.add("hidden");
+  }
+}
+
+// 答案 → 下一张：整卡滑出再滑入（不阻塞复习流程，动画期间锁定点击）
+let animating = false;
+function advanceWithSlide(after) {
+  if (animating) return;
+  const card = document.querySelector(".card");
+  if (!card) { after(); return; }
+  if (typeof card.animate !== "function") { after(); return; } // 不支持动画直接切换
+  animating = true;
+  card.style.pointerEvents = "none";
+  card.classList.add("anim-out");
+  setTimeout(function () {
+    after();
+    card.classList.remove("anim-out");
+    card.classList.add("anim-in");
+    void card.offsetWidth;           // 强制回流，让滑入从右侧开始
+    card.classList.remove("anim-in");
+    setTimeout(function () {
+      card.style.pointerEvents = "";
+      animating = false;
+    }, 220);
+  }, 200);
+}
+
 function refreshReadyView() {
   const dueCount = getDueList().length;
   document.getElementById("dueCount").textContent = dueCount;
@@ -266,6 +311,8 @@ function refreshReadyView() {
   document.getElementById("gradeView").classList.add("hidden");
   document.getElementById("judgeView").classList.add("hidden");
   document.getElementById("doneView").classList.add("hidden");
+  setActionBar("collapsed");
+  document.body.classList.remove("reviewing");
   updateBackBtn();
 }
 
@@ -283,6 +330,7 @@ function startSession() {
   }
   document.getElementById("readyView").classList.add("hidden");
   document.getElementById("doneView").classList.add("hidden");
+  document.body.classList.add("reviewing");
   showNext();
 }
 
@@ -311,6 +359,7 @@ function showNext() {
   el("recallView").classList.remove("hidden");
   el("gradeView").classList.add("hidden");
   el("judgeView").classList.add("hidden");
+  setActionBar("recall");
 }
 
 // 展示答案内容并进入评价视图
@@ -357,6 +406,7 @@ function showAnswerContent(d) {
   el("recallView").classList.add("hidden");
   el("gradeView").classList.remove("hidden");
   el("judgeView").classList.add("hidden");
+  setActionBar("grade");
 }
 
 function revealAnswer() {
@@ -374,12 +424,12 @@ function showJudge() {
   el("judgeType").textContent = d.item.type;
   el("judgeTopic").innerHTML = renderRich(d.topic.name);
   el("judgePrompt").innerHTML = renderRich(d.item.prompt);
-  el("judgeButtons").classList.remove("hidden");
   el("judgeAnswerBox").classList.add("hidden");
   el("judgeNextBtn").classList.add("hidden");
   el("judgeView").classList.remove("hidden");
   el("recallView").classList.add("hidden");
   el("gradeView").classList.add("hidden");
+  setActionBar("judge");
 }
 
 function judgeChoose(userSaysCorrect) {
@@ -389,7 +439,7 @@ function judgeChoose(userSaysCorrect) {
   const isCorrect = userSaysCorrect === expected;
   // 判断正确 → 简单；判断错误 → 忘记
   pendingGrade = isCorrect ? "简单" : "忘记";
-  el("judgeButtons").classList.add("hidden");
+  setActionBar("collapsed");
   el("judgeResult").textContent = isCorrect ? "✅ 判断正确" : "❌ 判断错误";
   el("judgeAnswerText").innerHTML = renderRich(d.item.answer);
   el("judgeAnswerBox").classList.remove("hidden");
@@ -415,7 +465,7 @@ function gradeCurrent(grade) {
   sessionStats.done += 1;
   queueIndex += 1;
   updateBackBtn();
-  showNext();
+  advanceWithSlide(showNext);
 }
 
 // 返回上一题：撤销最近一次评价（恢复该对象评价前状态），重新显示答案页供重新评价。
@@ -455,6 +505,8 @@ function finishSession() {
   document.getElementById("recallView").classList.add("hidden");
   document.getElementById("gradeView").classList.add("hidden");
   document.getElementById("judgeView").classList.add("hidden");
+  setActionBar("collapsed");
+  document.body.classList.remove("reviewing");
 }
 
 // ---------- 5. 备份（导出 / 导入；格式与合并逻辑见 sync.js） ----------
@@ -629,7 +681,7 @@ function renderStats() {
 // ---------- 6. 事件绑定与启动 ----------
 
 document.getElementById("startBtn").addEventListener("click", startSession);
-document.getElementById("showAnswerBtn").addEventListener("click", revealAnswer);
+document.getElementById("recallView").addEventListener("click", revealAnswer);
 document.getElementById("againBtn").addEventListener("click", startSession);
 document.getElementById("backBtn").addEventListener("click", goBack);
 document.getElementById("judgeTrueBtn").addEventListener("click", () => judgeChoose(true));
@@ -652,7 +704,7 @@ document.getElementById("downloadCloudBtn").addEventListener("click", () => Clou
 // 学习统计（实现见 stats.js + 上方 5.5 节）
 document.getElementById("statsBtn").addEventListener("click", openStats);
 document.getElementById("statsBackBtn").addEventListener("click", closeStats);
-document.querySelectorAll(".grade-btn").forEach((btn) => {
+document.querySelectorAll(".option[data-grade]").forEach((btn) => {
   btn.addEventListener("click", () => gradeCurrent(btn.dataset.grade));
 });
 
