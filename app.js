@@ -301,6 +301,22 @@ function advanceWithSlide(after) {
   }, 200);
 }
 
+// 应用内轻提示：替代原生 alert，避免显示来源网址/项目名标题
+let noticeTimer = null;
+function showNotice(text) {
+  let box = document.getElementById("noticeBox");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "noticeBox";
+    box.className = "notice-box";
+    document.body.appendChild(box);
+  }
+  box.textContent = text;
+  box.classList.add("show");
+  clearTimeout(noticeTimer);
+  noticeTimer = setTimeout(function () { box.classList.remove("show"); }, 2800);
+}
+
 function refreshReadyView() {
   const dueCount = getDueList().length;
   document.getElementById("dueCount").textContent = dueCount;
@@ -322,7 +338,7 @@ function startSession() {
   lastAction = null;
   updateBackBtn();
   if (queue.length === 0) {
-    alert("今天没有需要复习的内容，休息一下吧 🎉");
+    showNotice("复习完成，休息一下吧");
     refreshReadyView();
     return;
   }
@@ -534,7 +550,7 @@ function importBackupText(text, onSuccess) {
     document.getElementById("importCount").textContent = Sync.countLearned(backup.reviewState);
     document.getElementById("importModal").classList.remove("hidden");
   } catch (e) {
-    alert("导入失败：不是有效的备份文件。");
+    showNotice("导入失败：不是有效的备份文件。");
   }
 }
 
@@ -570,7 +586,7 @@ function applyImport(mode) {
   if (cb) {
     cb(); // 云端恢复：提示「云端恢复成功」并刷新页面
   } else {
-    alert("导入成功 ✅");
+    showNotice("导入成功 ✅");
   }
 }
 
