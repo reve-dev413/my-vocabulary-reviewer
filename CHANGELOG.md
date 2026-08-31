@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## [2026-08-31] 用户新笔记录入（第一批）：12 条普通考点
+
+- 新增普通考点 12 条（for all / habitable / surroundings / the comfort / not purely / be grounded in / city limit / willingness / align with / enduring relationship / recast our conception of success / It has compelled us to recognize that...），全部为英文+中文格式，无判断题。
+- 知识库 249 → **261 主题** / 381 → **393 卡**（母数据同步，validate 0 错误）；align with 与 align-career-goals-with-strengths 互记相关。
+- 已重新构建 data.js 并部署线上（未改 version.json / index.html / app.js）。
+
+---
+
 ## [2026-08-31] 导入剩余三章：就业 / 社会文化 / 专业词汇 + 部署 1.12.0（全部场景导入完成）
 
 ### 完成
