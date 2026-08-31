@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## [2026-08-31] 导入第四~六批：健康 / 法律 / 地理三场景 + 部署 1.11.0
+
+### 完成
+- 将 Word《四六级场景词附积累_并入版》"四、健康与心理场景""五、法律与行政场景""六、地理与自然环境场景"三章转换为知识库并同步线上：
+  - 母数据 `knowledge-studio/data/knowledge/word-education.json`：211 → **224 主题** / 323 → **346 卡**，新增 13 主题 23 卡：
+    - **四、健康与心理**（5 主题 11 卡）：reducing stigma around counselling、major transitions、keep sth. at bay（含 in the bay、bay 作动词）、be winded（related wind）、stab（词义 / a stab wound / stab sb. in the arm / a stab in the dark / 过去式 stabbed）。
+    - **五、法律与行政**（5 主题 9 卡）：dismissed without trial、file a complaint（含 file 作动词"提交"、in single file）、the defence（与 the prosecution 相对）、furnish（furnish documents / furnish sb. with sth.）、hinder sb.'s rehabilitation（related hinder-sb-from-doing）。
+    - **六、地理与自然环境**（3 主题 3 卡）：reed bed、wetland species、可直接套写例句 It is the same across much of this plateau, which encompasses an area a third of the size of the US.
+  - 跨章节处理（考点相同不重复导入）：case disposition（已含于 dispose-group）、citation（已含于 cite-group）、life sentence（已含于 life 相关表达）、plateau / vicinity（已在预保留主题中完整覆盖，含 Deaths in Brazil… 例句）。
+  - source：新主题中 9 个由 raw 词条块回填真实 source，4 个保留 legacy（keep sth. at bay 词头用了 sth. 与原文 something 不同、dismissed without trial / hinder sb.'s rehabilitation / wetland species 无独立词条块）。
+- 重新构建 `knowledge-studio/web/build/data.js`（224 主题 / 346 卡）并同步 `deploy/`；`validate.py` 0 错误 0 警告。
+- `version.json` / 页脚版本号：1.10.0 → **1.11.0**（2026-08-31，根 + deploy 同步）。
+
+### 修改的文件
+- 修改：`knowledge.js`（新增三章）、`knowledge-studio/data/knowledge/word-education.json`（追加 13 主题）、`knowledge-studio/web/build/data.js`（重生成）、`deploy/knowledge-studio/web/build/data.js`（同步）、`deploy/index.html`、根 `index.html`、`deploy/version.json`、根 `version.json`、`CHANGELOG.md`
+
+---
+
 ## [2026-08-31] 导入第三批：外交与国际关系场景 + 部署 1.10.0
 
 ### 完成
