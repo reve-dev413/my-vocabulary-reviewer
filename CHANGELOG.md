@@ -1,5 +1,114 @@
 # CHANGELOG
 
+## [2026-08-31] 导入第三批：外交与国际关系场景 + 部署 1.10.0
+
+### 完成
+- 将 Word《四六级场景词附积累_并入版》"三、外交与国际关系场景"转换为知识库并同步线上（https://reve-dev413.github.io/my-vocabulary-reviewer/）：
+  - 母数据 `knowledge-studio/data/knowledge/word-education.json`：207 → **211 主题** / 315 → **323 卡**，新增 4 主题 8 卡——the Commonwealth / commonwealth（3 卡：英联邦大写专名用法、Commonwealth countries、a commonwealth of independent states，词源放 materials）、alliance（3 卡：an unlikely alliance、alliance with / between、be allied with）、civilian sector（1 卡）、be incorporated into（1 卡）。
+  - source：commonwealth / alliance / civilian-sector 由 raw 词条块回填真实 source（block-0204 / 0205 / 0206）；be incorporated into 与 civilian sector 同词条块，按 accord 先例保留 legacy source。
+  - 跨章节处理：accord 系列考点（词义/辨析、in accord with、of one's own accord、reach an accord on something、reach a peace accord、可直接套写例句）已在预保留主题中完整覆盖，本批次不重复导入。
+- 重新构建 `knowledge-studio/web/build/data.js`（211 主题 / 323 卡，draft 0）并同步 `deploy/`；`validate.py` 0 错误 0 警告。
+- `version.json`：1.9.2 → 1.10.0（2026-08-31，根 + deploy 同步）。
+
+### 修改的文件
+- 修改：`knowledge-studio/data/knowledge/word-education.json`（追加 4 主题）、`knowledge-studio/web/build/data.js`（重生成）、`deploy/knowledge-studio/web/build/data.js`（同步）、`deploy/version.json`、根 `version.json`、`CHANGELOG.md`
+
+---
+
+## [2026-08-31] 第五轮题库修正 + 同步知识库管线（knowledge.js → 母数据 → data.js）
+
+### 题库修正（knowledge.js，全部同步到 knowledge-studio 母数据与 web/build/data.js）
+- **占位词统一**：题库中表某物/事的 something 全部改为 sth.（intrinsic to sth.、an advertisement for sth.、reach an accord on sth. 等），criticize 卡改为「criticize sb. **for** doing sth.」。
+- **单独考点**：a disposition to do；digest 拆成动词卡（消化+absorb/process）与名词卡（文摘）；citation for bravery 与 citation 分开。
+- **介词标红**（**…** 渲染为红色）：be characterized **by** / remain accountable **for** / **under** uncertainty / be compatible **with** / hinder sb **from** doing / assist **with** / criticize sb. **for** doing sth.
+- **判断题答案格式**：equipment / district / emerge / guidance 四张判断卡答案统一改为「正确答案：对。…+一句解析」（如 guidance 没有复数形式）。
+- **派生词格式**：vulgarly→vulgar 的副词形式是什么、vulgarity→vulgar 的名词形式、clumsily→clumsy 的副词形式、clumsiness→clumsy 的名词形式。
+- **词义答案标注词性**：全库「X 是什么意思？」单词语义卡答案补词性（约 30 张：solemn 隆重（形容词）、impart 传授（动词）、retrieve（动词）、stakeholder（名词）、inevitably（副词）等）。
+- **beyond the immediate horizon**：由例句卡改为短语考点卡，原句放入补充材料。
+- 其他：impart/solemn 释义补词性；cradle-to-grave care、lofty rhetoric 等沿用上轮修正。
+
+### 规则固化（AGENTS.md）
+- 第 9 条③：派生词题格式改为「xxx 的 XX 形式是什么？」；新增 ⑤ 词义卡答案标注词性、⑥ 占位词统一 sth./sb.。
+- 第 15 条：判断题答案以「正确答案：对/错」开头并附解析。
+- 第 4 条：用户明确要求把完整例句降为辅助材料时以用户要求为准。
+
+### 数据管线同步
+- `knowledge-studio/tools/migrate_legacy.py`：knowledge.js → `data/knowledge/word-education.json`（207 主题 / 315 卡，0 warning）。
+- `knowledge-studio/tools/build_web_data.py`：→ `web/build/data.js`。
+- `knowledge-studio/tools/validate.py`：0 错误 0 警告。
+- 注意：正式 App 的知识库来自 `knowledge-studio/web/build/data.js`（旧根目录 knowledge.js 不再被 index.html 引用，仅作工作副本）。
+
+### 修改的文件
+- 修改：`knowledge.js`、`AGENTS.md`、`README.md`、`CHANGELOG.md`、`knowledge-studio/data/knowledge/word-education.json`（重生成）、`knowledge-studio/web/build/data.js`（重生成）、`knowledge-studio/CHANGELOG.md`
+
+---
+
+## [2026-08-31] 「无内容」提示改为应用内轻提示，去除网址/项目名，部署 1.9.2
+
+### 需求
+- 「今天没有需要复习的内容」弹窗目前是浏览器原生 `alert()`，其标题会显示来源网址（如 `…github.io 显示`）与项目名。用户要求此处**不显示网址和项目名**，界面只显示「复习完成，休息一下吧」。
+
+### 改动（纯 UI，未触碰 PDM / 数据结构 / 判定 / 同步）
+- `app.js`：新增应用内轻提示 `showNotice(text)`（底部居中、随类名 `show` 淡入、约 2.8s 自动消失），替代所有原生 `alert()`——队列为空时改为 `showNotice("复习完成，休息一下吧")`；导入失败/成功提示也改用 `showNotice`（避免再出现来源标题）。
+- `index.html`：新增 `.notice-box` 样式（深/浅色自适应、无来源标题、无按钮、仅文字）。
+- `version.json`：1.9.1 → 1.9.2（2026-08-31）；页脚版本号同步 v1.9.2。
+
+### 验证
+- `node --check app.js` 通过；`app.js` 已无残留 `alert()`。
+
+---
+
+## [2026-08-31] 「开始复习」等按钮去蓝色，融入卡片操作层，部署 1.9.1
+
+### 需求
+- 让「开始复习」按钮与新版卡片操作层统一：去掉突兀的蓝色药丸按钮，改为底部操作层里的文字选项（无背景框、无圆角、文字+箭头、颜色用 `--text`）；卡片整体可点击也开始复习。同步处理其他残留蓝色按钮。
+
+### 改动（纯 UI/交互，未触碰 PDM / 数据结构 / 判定 / 同步）
+- `index.html`：
+  - 移除 `#readyView` 里的 `#startBtn`（蓝色 `btn-primary`）与 `#doneView` 里的 `#againBtn`（`btn-plain`）。
+  - 底部操作层 `#actionBar` 新增 `readyOptions`（开始复习 ▶，`id=startBtn`）与 `doneOptions`（再复习一轮 ▶，`id=againBtn`），均为 `option option-full` 单选项。
+  - 新增 `.option-full`：仅文字+箭头、无背景框/圆角、颜色 `--text`、`::after` 隐藏圆点。
+  - `.btn-primary` 改为中性（同 `.btn-plain`），去掉蓝色背景——同步消除 `#importMergeBtn`/`#tokenConfirmBtn`/`#judgeNextBtn` 的蓝色。
+  - 页脚版本号 v1.9.0 → v1.9.1。
+- `app.js`：
+  - `setActionBar(mode)` 扩展支持 `ready` / `done` 模式（展开操作层并显示对应单选项）。
+  - `refreshReadyView` → `setActionBar("ready")`；`finishSession` → `setActionBar("done")`。
+  - 新增 `#readyView` 整卡点击 → `startSession`（点击卡片任意位置即可开始复习）。
+- `version.json`：1.9.0 → 1.9.1（2026-08-31）。
+
+### 验证
+- `node --check app.js` 通过；无残留蓝色 `btn-primary` / 失效选择器。
+- 说明：`--accent`（#0066cc）仍用于文字链接/图表；update 横幅「立即更新」按钮（update.js 动态创建的非 `.btn-primary`）仍为蓝色，如需一并去蓝可告知。
+
+---
+
+## [2026-08-31] 复习界面交互改版：整卡点击显示答案 + 底部操作层（莫兰迪记忆程度），部署 1.9.0
+
+### 需求
+- 把复习界面评价交互改为「卡片整体可点击」：问题态底部只有一条细横线指示器（iOS Home Indicator），点击卡片任意位置显示答案；答案态底部操作层向上展开为四档记忆程度（忘记/困难/记得/简单）或判断题两档（错/对），选项只有文字 + 小圆点、无按钮背景框，主色为莫兰迪色系。
+
+### 改动（纯 UI/交互，未触碰 PDM 算法 / 数据结构 / 复习判定 / 同步）
+- **`index.html`**：
+  - 新增莫兰迪记忆程度变量（亮/暗各一套）：`--grade-forget/hard/remember/easy`、`--judge-wrong/right`、`--home-indicator`、`--option-divider`。
+  - 新增底部操作层 `.action-bar`（默认 4px 细横线，`.expanded` 展开为 48px，高度过渡）+ `.option` 选项（文字+小圆点、无背景框、相邻 `0.5px` 分隔、hover 极微变亮）+ `@keyframes optFade` 依次淡入 + `.anim-out/.anim-in` 整卡滑出滑入。
+  - 移除 `#showAnswerBtn` 药丸按钮（改为整卡 `#recallView` 点击）、移除 `.grade-row` 四档/判断题原按钮（改为操作层），新增 `.recall-hint` 提示「点击卡片任意位置显示答案」。
+  - 页脚版本号 v1.8.0 → v1.9.0。
+- **`app.js`**：
+  - `#showAnswerBtn` 点击 → `#recallView` 点击（revealAnswer）。
+  - `.grade-btn` 绑定 → `.option[data-grade]`；判断题按钮保留 id（`judgeTrueBtn`/`judgeFalseBtn`）。
+  - 新增 `setActionBar(mode)`（recall / collapsed / grade / judge）切换操作层展开与选项；`advanceWithSlide()` 评价后整卡滑入滑出（不阻塞流程、动画期间锁定点击、不支持动画时直接切换）。
+  - 各视图切换函数（showNext / showAnswerContent / showJudge / judgeChoose / finishSession / refreshReadyView / startSession）同步设置操作层状态与 `body.reviewing`。
+- **`version.json`**：1.8.0 → 1.9.0（2026-08-31）；SW 缓存名随版本自动更换。
+
+### 验证
+- `node --check app.js` 通过；index.html 无残留 `showAnswerBtn`/`judgeButtons`/`grade-btn`/`grade-row` 选择器。
+- 本地截图目检（准备态 / 回忆态 / 评价态 / 判断题态，浅色 + 深色）通过。
+
+### 部署
+- 由 GitHub Desktop 提交推送（根 + deploy），线上打开后提示「发现新版本 v1.9.0」。
+
+---
+
 ## [2026-08-31] 页脚显示版本号
 
 - `index.html`（根 + deploy 同步）：页脚「导出进度」提示下方新增一行版本号 `v1.8.0`（继承页脚字体/格式/颜色，与 `version.json` 保持一致）。
