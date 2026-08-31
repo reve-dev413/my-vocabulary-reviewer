@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## [2026-08-31] 导入剩余三章：就业 / 社会文化 / 专业词汇 + 部署 1.12.0（全部场景导入完成）
+
+### 完成
+- 将 Word《四六级场景词附积累_并入版》剩余章节"七、就业与职业发展场景""八、社会与文化场景""十一、专业词汇：学科与领域类"转换为知识库并同步线上，**至此全部场景导入完成**：
+  - 母数据 `knowledge-studio/data/knowledge/word-education.json`：224 → **249 主题** / 346 → **381 卡**，新增 25 主题 35 卡：
+    - **七、就业与职业发展**（12 主题 12 卡）：business growth / revenue growth（公司销售增长，汉译英方向）、align career goals with strengths、plan for one's career、outlook / view on life、invoice、administrative task、quality control、approval process、workflow、CV、work one's way into / through、an ornament to the profession。
+    - **八、社会与文化**（6 主题 14 卡）：statue（词义 / erect a statue / unveil a statue / a bronze statue of sb. / 与 sculpture 辨析 / of 与 to 用法）、a national treasure、applause goes to、belated（含 a belated birthday wish）、distorted（distorted image / distorted facts）、modernity。
+    - **十一、专业词汇**（7 主题 9 卡）：volunteer information、congestion、corporate（corporate interests / a corporate body）、policy mix、an indicative offer（related indicative）、cost-effective、fuel-efficient。
+  - 跨章节处理：school district 已含于 district 主题，不重复导入。
+  - source：25 个新主题中 23 个由 raw 词条块回填真实 source；2 个保留 legacy（business growth / revenue growth 无对应词条块标题、fuel-efficient 与 cost-effective 同词条块）。
+- 重新构建 `knowledge-studio/web/build/data.js`（249 主题 / 381 卡）并同步 `deploy/`；`validate.py` 0 错误 0 警告。
+- `version.json` / 页脚版本号：1.11.0 → **1.12.0**（2026-08-31，根 + deploy 同步）。
+
+### 修改的文件
+- 修改：`knowledge.js`（新增三章）、`knowledge-studio/data/knowledge/word-education.json`（追加 25 主题）、`knowledge-studio/web/build/data.js`（重生成）、`deploy/knowledge-studio/web/build/data.js`（同步）、`deploy/index.html`、根 `index.html`、`deploy/version.json`、根 `version.json`、`CHANGELOG.md`
+
+---
+
 ## [2026-08-31] 导入第四~六批：健康 / 法律 / 地理三场景 + 部署 1.11.0
 
 ### 完成
