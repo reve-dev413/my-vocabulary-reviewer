@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## [2026-08-31] 第六轮题库修正：例句卡关键词 + 介词标红 + 考点拆分（纯数据更新）
+
+### 题库修正（knowledge.js → 母数据 → data.js）
+- **例句卡「关键词」改为句子重点词**（不再以整句作为主题名）：workload peaks（Distributing deadlines…）、last-minute cramming（Regular feedback…）、A healthy balance、in accord with（When new ideas…）、past performance（Past performance…）、career preparation、digital technology、artificial intelligence（AI can recognize patterns…）、big data、plateau（It is the same across much of this plateau…）。
+- **新考点**：gravitate towards / to 倾向于（关键词仍为 gravitate；gravitate 词义卡改为「被吸引（动词）」）；mere ornament 只是点缀（与 an ornament to the profession 拆成两题）。
+- **关键词改名**：an ornament to the profession → **ornament**。
+- **题干改写**：statue 后的 of 与 to 怎么用？→「**statue 的介词搭配是什么？**」（答案仍为 of 接表现对象、to 常用于 monument to somebody）。
+- **介词标红**（**…** 渲染为红色）：reach an accord **on** addressing climate change、build **in** a buffer、narrow disparities **in**、weave A **into** B、be incorporated **into**。
+
+### 验证与同步
+- 知识库 261 主题 / 393 → **395 卡**（新增 2 卡）；`migrate_legacy.py` 0 阻塞、`validate.py` 0 错误 0 警告。
+- `data.js` 重生成并同步 `deploy/`；**未改 version.json / index.html / app.js**（沿用上一次纯数据更新的部署约定）。
+
+### 修改的文件
+- 修改：`knowledge.js`、`knowledge-studio/data/knowledge/word-education.json`（重生成）、`knowledge-studio/web/build/data.js`（重生成）、`deploy/knowledge-studio/web/build/data.js`（同步）、`CHANGELOG.md`
+
+---
+
 ## [2026-08-31] 用户新笔记录入（第一批）：12 条普通考点
 
 - 新增普通考点 12 条（for all / habitable / surroundings / the comfort / not purely / be grounded in / city limit / willingness / align with / enduring relationship / recast our conception of success / It has compelled us to recognize that...），全部为英文+中文格式，无判断题。
