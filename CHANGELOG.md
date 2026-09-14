@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## [2026-09-14] 用户新笔记录入（第二批）：36 条普通考点
+
+- 新增普通考点 36 条：doctrine / find（法律语境）/ integrity / speak of / institution / conspire / conspiracy / story（熟词僻义）/ a dearth of / collective acceptance / booming / landscape / the political / economic landscape / via e-commerce platforms / Internet access / coverage / logistics networks / extend into / emerge as（与 emerge 互记相关）/ enable real time interaction between urban consumers and sellers / sales channels of / for agricultural products / break down information barriers between urban and rural areas / prosperous / revitalization / profoundly / deepening / unprecedented / predecessor / successor / vitality / inject into / own goal / rural development in China / deploy / purpose + 例句卡 2 张（The policy was intended to strengthen the industry… / Education loses its moral purpose…）。
+- 全部为英文+中文格式普通考点，未生成判断题；`in real time` 已存在（重复，跳过）。
+- 知识库 261 → **297 主题** / 395 → **431 卡**（母数据同步，validate 0 错误）；data.js 重生成并同步 deploy/，未改 version.json / index.html / app.js。
+
+---
+
 ## [2026-08-31] 第六轮题库修正：例句卡关键词 + 介词标红 + 考点拆分（纯数据更新）
 
 ### 题库修正（knowledge.js → 母数据 → data.js）
