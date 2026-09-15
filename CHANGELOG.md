@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## [2026-09-14] 句子关键词机制：两条整句主题改为难点关键词
+
+- `sentence-policy-own-goal`：主题 name 由整句改为 **own goal**（按 P1/P2：句中难点表达且已有同名普通考点）；`type:"句子"`、例句卡、英文原句与中文答案均不变。
+- `sentence-education-moral-purpose`：主题 name 由整句改为 **purpose**（用户指定）。
+- 已有人工关键词（last-minute cramming / workload peaks / artificial intelligence / in accord with / past performance / career preparation / digital technology / big data / plateau / A healthy balance）全部保留，未覆盖。
+- 规则固化：`AGENTS.md` 用户新笔记录入第 7 条（keyword = 句子主题 name；P1–P5 识别优先级；不新建 keyword 字段）。
+- 未改 `index.html` / `app.js` / `stats.js` / `service-worker.js` / `version.json`；判断题 4 条数据未动。
+- 验证：297 主题 / 431 卡，validate 0 错误 0 警告；data.js 重建并同步 `deploy/`。
+
+---
+
 ## [2026-09-14] 用户新笔记录入（第二批）：36 条普通考点
 
 - 新增普通考点 36 条：doctrine / find（法律语境）/ integrity / speak of / institution / conspire / conspiracy / story（熟词僻义）/ a dearth of / collective acceptance / booming / landscape / the political / economic landscape / via e-commerce platforms / Internet access / coverage / logistics networks / extend into / emerge as（与 emerge 互记相关）/ enable real time interaction between urban consumers and sellers / sales channels of / for agricultural products / break down information barriers between urban and rural areas / prosperous / revitalization / profoundly / deepening / unprecedented / predecessor / successor / vitality / inject into / own goal / rural development in China / deploy / purpose + 例句卡 2 张（The policy was intended to strengthen the industry… / Education loses its moral purpose…）。
