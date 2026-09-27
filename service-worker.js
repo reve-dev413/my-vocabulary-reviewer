@@ -18,6 +18,7 @@ const SHELL = [
   "./index.html",
   "./app.js",
   "./sync.js",
+  "./state-safety.js",
   "./stats.js",
   "./cloud-sync.js",
   "./update.js",

@@ -19,20 +19,92 @@ const STORAGE_KEY = "reviewer-state-v1";
 const MS_HOUR = 3600 * 1000;
 const MS_DAY = 24 * MS_HOUR;
 
+// 最近一次成功保存的状态快照（仅用于 saveState 的骤降保护对比；不持久化）
+let lastSavedState = null;
+
+// 数据安全标记：stateBlocked = true 表示「读到的状态已损坏且未能安全恢复」，
+// 此时应进入安全态（拒绝一切覆盖式写回），而非把空对象当成新用户。
+// ★ 声明必须先于 `let state = loadState()`，否则 loadState 内赋值会触发 TDZ 错误。
+let stateBlocked = false;
+let stateLoadReport = null;   // 诊断信息（reason / raw 长度 / 备份键）
+
 // state: { [itemId]: { difficulty, stability, lastReview, nextReview, reviews, history[] } }
 let state = loadState();
 
 function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch (e) {
-    return {};
+  // 统一走 state-safety.js 的护栏：区分「真正的新用户」与「有数据但读坏了」。
+  if (!window.StateSafety || typeof window.StateSafety.safeLoadState !== "function") {
+    // 安全层缺失时退化为旧行为（不应发生：state-safety.js 在 app.js 之前加载）
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      return {};
+    }
   }
+  const r = window.StateSafety.safeLoadState(STORAGE_KEY);
+  stateLoadReport = r;
+  if (r.ok) {
+    // 正常（新用户 empty / 已加载 loaded）
+    return r.state;
+  }
+  // ---- 以下为异常路径：原有数据不可解析或类型错误 ----
+  // 1) 保全原始数据（另存备份键，绝不改动原键）
+  const backupKey = window.StateSafety.preserveCorrupt(r.raw, STORAGE_KEY);
+  // 2) 进入安全态：阻止任何覆盖式写回，避免把损坏态"洗成"仅含少量新记录
+  stateBlocked = true;
+  stateLoadReport.backupKey = backupKey;
+  // 3) 明确诊断（控制台可见；不弹窗打断，避免影响正常复习入口）
+  console.error(
+    "[数据安全] reviewer-state-v1 读取异常，已阻止自动覆盖。\n" +
+    "  原因: " + r.reason + (r.error ? "（" + r.error + "）" : "") + "\n" +
+    "  原始长度: " + (r.raw === null ? 0 : String(r.raw).length) + " 字符\n" +
+    "  已保全到: " + (backupKey || "（保全失败：存储不可写）") + "\n" +
+    "  本次将以空状态进入只读安全模式：不会覆盖原数据；请先备份/从云端恢复后再继续。"
+  );
+  return {};
 }
 
 function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  // 安全态：绝不写回（防止把损坏状态覆盖成"少量新记录"）
+  if (stateBlocked) {
+    console.warn("[数据安全] 当前处于安全模式（状态读取异常），已阻止本次保存以免覆盖原数据。");
+    return false;
+  }
+  // 骤降保护：拒绝用异常缩小的状态覆盖已有学习数据
+  if (window.StateSafety && typeof window.StateSafety.guardSave === "function") {
+    const prev = lastSavedState !== null ? lastSavedState : loadStateForGuard();
+    const g = window.StateSafety.guardSave(prev, state);
+    if (!g.allow) {
+      console.error(
+        "[数据安全] 已阻止覆盖：状态条目数异常骤降（" + g.before + " → " + g.after + "，原因：" + g.reason + "）。\n" +
+        "  原状态保持不变；未上传云端、未覆盖备份。\n" +
+        "  如确需继续，请先从云端恢复或导入备份。"
+      );
+      return false;
+    }
+  }
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    lastSavedState = JSON.parse(JSON.stringify(state));
+    return true;
+  } catch (e) {
+    console.error("[数据安全] 保存失败：", e);
+    return false;
+  }
+}
+
+// 骤降保护的基准状态：优先用内存快照；没有时读取存储中的现值。
+// 注意：此函数只读，不写盘、不改全局标记。
+function loadStateForGuard() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    const p = JSON.parse(raw);
+    return (p && typeof p === "object" && !Array.isArray(p)) ? p : {};
+  } catch (e) {
+    return null; // 读不出来时返回 null → guardSave 视作 before=0（不触发保护）
+  }
 }
 
 // ---------- 2. 记忆算法（PDM v1：Personal Dynamic Memory，可替换） ----------
@@ -65,6 +137,29 @@ function clamp(v, lo, hi) {
 
 // 加载时一次性迁移旧数据（只补 null/缺失字段，不覆盖数字、不删除任何字段）
 migrateAllState();
+
+// 加载时执行一次 ID 迁移（历史孤儿 item.id → 当前知识库有效 id）。
+// 幂等：第二次运行不再有任何迁移动作；未确认的旧 id 原样保留，不删除、不合并。
+(function runIdMigrationOnLoad() {
+  if (stateBlocked) return;                                  // 安全态下不做任何改动
+  if (!window.StateSafety || typeof window.StateSafety.migrateIds !== "function") return;
+  const before = Object.keys(state).length;
+  const report = window.StateSafety.migrateIds(state);
+  const after = Object.keys(state).length;
+  if (report.moved.length) {
+    console.log("[ID 迁移] 已迁移 " + report.moved.length + " 条：", report.moved,
+                "｜条目数 " + before + " → " + after);
+    // 迁移改变了 state 内容：写回一次（saveState 含安全护栏）
+    saveState();
+  }
+  if (report.unresolved.length) {
+    console.log("[ID 迁移] 未确认归宿的历史 id（已原样保留，不删除、不合并）：" + report.unresolved.length + " 条",
+                report.unresolved);
+  }
+  if (report.skipped.length) {
+    console.warn("[ID 迁移] 已跳过的映射（目标不在当前知识库或映射无效）：", report.skipped);
+  }
+})();
 
 // 记忆对象状态字段：
 //   difficulty  相对难度（0.05~0.95，越高越难记）
