@@ -95,12 +95,40 @@
     try { return localStorage.getItem(GIST_ID_KEY); } catch (e) { return null; }
   }
 
+  // 清除失效 token，下次 getToken() 会重新弹输入框（401 自愈）
+  function clearToken() {
+    try { localStorage.removeItem(TOKEN_KEY); } catch (e) { /* 忽略 */ }
+  }
+
   // GitHub API 错误统一提示（Bad credentials / 限流 / 404 等）
+  // 401/403：token 失效或无 gist 权限 → 自动清 token，下次会回弹输入框
   function apiError(res) {
     return res.json().catch(function () { return {}; }).then(function (err) {
       const msg = (err && err.message) || ("HTTP " + res.status);
+      if (res.status === 401 || res.status === 403) {
+        clearToken();
+        alert("云端操作失败：" + msg +
+          "\n\nToken 已失效或权限不足，已自动清除。请重新点一次，输入新的 Token（只需勾选 gist 权限）。");
+        return;
+      }
       alert("云端操作失败：" + msg + "\n\n请检查 Token 是否有效、是否勾选了 gist 权限。");
     });
+  }
+
+  // 网络层失败（TypeError: Failed to fetch）统一提示。
+  // 成因：手机/运营商网络无法访问 api.github.com（DNS 污染、连接被重置等）。
+  // 与 401 区分开——此时请求根本没发出去，换 token 无用。
+  function fetchFailedError(err, action) {
+    const isNetwork = err && (err.name === "TypeError" || /fetch/i.test(err.message || ""));
+    if (isNetwork) {
+      alert(action + "失败：连接不上 GitHub（api.github.com）。\n\n" +
+        "这不是 Token 问题，可依次尝试：\n" +
+        "1) 切换网络（流量 ↔ Wi-Fi）后重试\n" +
+        "2) 关闭/更换代理或 VPN 后重试\n" +
+        "3) 用电脑浏览器打开站点再试一次");
+      return;
+    }
+    alert(action + "失败：" + (err && err.message ? err.message : "未知错误，请重试。"));
   }
 
   // ---------- 上传 ----------
@@ -190,7 +218,7 @@
         alert("云端备份成功，已背 " + Sync.countLearned(backup.reviewState) + " 词 ✅\n已保存为私有 Gist，可在其他设备点「从云端恢复」取回。");
       });
     }).catch(function (err) {
-      alert("上传失败：" + (err && err.message ? err.message : "网络错误，请检查网络后重试。"));
+      fetchFailedError(err, "上传");
     });
   }
 
@@ -294,7 +322,7 @@
         alert("该账号下没有找到云备份：请先在任一设备点「上传云端」完成第一次备份。");
       });
     }).catch(function (err) {
-      alert("恢复失败：" + (err && err.message ? err.message : "网络错误，请检查网络后重试。"));
+      fetchFailedError(err, "恢复");
     });
   }
 
