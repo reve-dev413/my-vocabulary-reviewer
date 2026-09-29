@@ -133,7 +133,8 @@
     color: #f5f5f7;
   }
   [data-theme="dark"] header { border-bottom: 1px solid rgba(255,255,255,.1); }
-  h1 { font-size: 21px; font-weight: 600; letter-spacing: -0.01em; color: #f5f5f7; }
+  h1 { font-size: 21px; font-weight: 600; letter-spacing: -0.01em; color: #f5f5f7; display: flex; align-items: center; gap: 7px; }
+  h1 .title-icon { width: 26px; height: 26px; }
   .toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
   .toolbar button {
     margin: 0;
@@ -231,10 +232,6 @@
   .done-ham { position: relative; width: 96px; height: 96px; margin: 0 auto 14px; animation: donePop .5s cubic-bezier(.2,1.5,.4,1) both; }
   .done-ham img { width: 96px; height: 96px; display: block; }
   [data-theme="light"] .done-ham img { background: #1d1d1f; border-radius: 50%; padding: 12px; }
-  .done-dot { position: absolute; border-radius: 50%; animation: donePop .45s cubic-bezier(.2,1.5,.4,1) both; }
-  .done-dot.d1 { top: -5px; right: -3px; width: 10px; height: 10px; background: #5DCAA5; animation-delay: .3s; }
-  .done-dot.d2 { top: 8px; left: -10px; width: 6px; height: 6px; background: #9FE1CB; animation-delay: .4s; }
-  .done-dot.d3 { bottom: 3px; right: -11px; width: 6px; height: 6px; background: #9FE1CB; animation-delay: .5s; }
   .done-title { font-size: 20px; font-weight: 600; }
   .done-sub { font-size: 13px; color: var(--sub-text); margin-top: 6px; }
   .done-recap { background: var(--tag-bg); border-radius: 14px; padding: 14px 16px; margin-top: 16px; }
@@ -630,7 +627,7 @@
 <body>
 
 <header>
-  <h1>📖 今天你记了吗</h1>
+  <h1><img src="hamster-clear.png" alt="" class="title-icon">今天你记了吗</h1>
   <div class="toolbar">
     <button id="themeBtn" title="切换到深色模式">🌙</button>
     <button id="backBtn" class="hidden" title="返回上一题重新评价">上一题</button>
@@ -689,7 +686,6 @@
   <div id="doneView" class="hidden">
     <div class="done-ham">
       <img src="hamster-clear.png" alt="仓鼠">
-      <span class="done-dot d1"></span><span class="done-dot d2"></span><span class="done-dot d3"></span>
     </div>
     <div class="done-title done-fade" id="doneTitle" style="animation-delay:.15s">本轮复习完成！</div>
     <div class="done-sub done-fade hidden" id="doneSub" style="animation-delay:.25s"></div>
@@ -832,7 +828,7 @@
 
 <footer>
   <div>纯本地运行 · 数据只保存在你的浏览器中 · 记得定期「导出进度」</div>
-  <div>v1.18.0</div>
+  <div>v1.18.2</div>
 </footer>
 
 <!-- 数据来源：knowledge-studio 母数据产物（由 tools/build_web_data.py 生成）；旧 knowledge.js 保留不引用 -->
