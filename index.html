@@ -332,6 +332,13 @@
   /* Hover：极轻微变亮 */
   .option:hover { background: rgba(0, 0, 0, .02); }
   [data-theme="dark"] .option:hover { background: rgba(255, 255, 255, .03); }
+  /* 判断题：结果行（✓ 正确 / ✗ 错误）+ 答错时亮出的正确选项 */
+  #judgeResult { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  #judgeResult.ok { color: var(--judge-right); }
+  #judgeResult.wrong { color: var(--judge-wrong); }
+  .judge-correct { color: var(--judge-right); font-weight: 600; }
+  /* 判断题两档：文案随题干变化（可数/不可数、可以/不可以…），长文案换行居中不溢出 */
+  #judgeOptions .option { min-width: 0; padding: 0 10px; line-height: 1.25; overflow-wrap: anywhere; }
 
   @keyframes optFade {
     from { opacity: 0; transform: translateY(6px); }
@@ -656,8 +663,8 @@
       <button class="option" data-grade="简单">简单</button>
     </div>
     <div class="action-options hidden" id="judgeOptions">
-      <button class="option" id="judgeFalseBtn" data-judge="false">❌ 错</button>
-      <button class="option" id="judgeTrueBtn" data-judge="true">✅ 对</button>
+      <button class="option" id="judgeLeftBtn" data-judge="false">❌ 错</button>
+      <button class="option" id="judgeRightBtn" data-judge="true">✅ 对</button>
     </div>
     <div class="action-options hidden" id="doneOptions">
       <button class="option option-full" id="againBtn">再复习一轮 ▶</button>
@@ -761,7 +768,7 @@
 
 <footer>
   <div>纯本地运行 · 数据只保存在你的浏览器中 · 记得定期「导出进度」</div>
-  <div>v1.16.1</div>
+  <div>v1.17.0</div>
 </footer>
 
 <!-- 数据来源：knowledge-studio 母数据产物（由 tools/build_web_data.py 生成）；旧 knowledge.js 保留不引用 -->

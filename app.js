@@ -450,7 +450,7 @@ function showNext() {
   }
   const d = queue[queueIndex];
   const el = (id) => document.getElementById(id);
-  // 判断题（judge）：显示命题 → 判断对/错 → 显示答案（对=简单、错=忘记）
+  // 判断题（judge）：显示问句 → 选答（选项随题目而定）→ 显示答案（答对=简单、答错=忘记）
   if (d.item.judge) {
     showJudge();
     return;
@@ -523,16 +523,56 @@ function revealAnswer() {
 }
 
 // ---------- 4b. 判断题流程 ----------
+// 题干保持自然疑问句；两档按钮是「对这个疑问句的直接回答」，随题目变化。
+// 选项来源：item.choices（数组顺序 = 按钮顺序）+ item.correct（正确选项索引）；
+// 未声明 choices 的历史卡回退为「❌ 错 / ✅ 对」两档（仍由 expected 判定）。
 
 let pendingGrade = null;
+
+const JUDGE_FALLBACK_CHOICES = ["❌ 错", "✅ 对"];
+
+// 解析一道判断题的两个选项与正确项下标
+function judgeOptionsFor(item) {
+  const c = item ? item.choices : null;
+  if (Array.isArray(c) && c.length === 2 && typeof c[0] === "string" && typeof c[1] === "string") {
+    let idx = Number(item.correct);
+    if (idx !== 0 && idx !== 1) idx = item.expected === false ? 1 : 0; // 容错兜底，正常数据不会走到
+    return { labels: [c[0], c[1]], correctIndex: idx, legacy: false };
+  }
+  const expected = !item || item.expected === undefined ? true : !!item.expected;
+  return { labels: JUDGE_FALLBACK_CHOICES.slice(), correctIndex: expected ? 1 : 0, legacy: true };
+}
+
+// answer 约定：「正确答案：<正确选项>。<解析>」→ 拆成正确选项与解析两句
+const JUDGE_ANSWER_PREFIX = "正确答案：";
+function judgeAnswerParts(answer, opt) {
+  const s = String(answer || "");
+  if (s.indexOf(JUDGE_ANSWER_PREFIX) === 0) {
+    const end = s.indexOf("。");
+    if (end > JUDGE_ANSWER_PREFIX.length) {
+      return { label: s.slice(JUDGE_ANSWER_PREFIX.length, end), explanation: s.slice(end + 1).trim() };
+    }
+  }
+  return { label: opt.labels[opt.correctIndex], explanation: s };
+}
 
 function showJudge() {
   const d = queue[queueIndex];
   const el = (id) => document.getElementById(id);
+  const opt = judgeOptionsFor(d.item);
+  const btns = [el("judgeLeftBtn"), el("judgeRightBtn")];
+  for (let i = 0; i < btns.length; i++) {
+    if (!btns[i]) continue;
+    btns[i].textContent = opt.labels[i];
+    // 传统对/错两档沿用红/绿配色；选项式回答用中性色（颜色不再暗示对错）
+    if (opt.legacy) btns[i].setAttribute("data-judge", i === 1 ? "true" : "false");
+    else btns[i].removeAttribute("data-judge");
+  }
   el("judgeProgress").textContent = `第 ${queueIndex + 1} / ${queue.length} 项`;
   el("judgeType").textContent = d.item.type;
   el("judgeTopic").innerHTML = renderRich(d.topic.name);
   el("judgePrompt").innerHTML = renderRich(d.item.prompt);
+  el("judgeResult").className = "";
   el("judgeAnswerBox").classList.add("hidden");
   el("judgeNextBtn").classList.add("hidden");
   el("judgeView").classList.remove("hidden");
@@ -541,16 +581,22 @@ function showJudge() {
   setActionBar("judge");
 }
 
-function judgeChoose(userSaysCorrect) {
+// 选中第 index 个按钮（0=左，1=右）；评价口径不变：判断正确 → 简单、判断错误 → 忘记
+function judgeChoose(index) {
   const d = queue[queueIndex];
   const el = (id) => document.getElementById(id);
-  const expected = d.item.expected === undefined ? true : !!d.item.expected;
-  const isCorrect = userSaysCorrect === expected;
-  // 判断正确 → 简单；判断错误 → 忘记
+  const opt = judgeOptionsFor(d.item);
+  const isCorrect = index === opt.correctIndex;
   pendingGrade = isCorrect ? "简单" : "忘记";
   setActionBar("collapsed");
-  el("judgeResult").textContent = isCorrect ? "✅ 判断正确" : "❌ 判断错误";
-  el("judgeAnswerText").innerHTML = renderRich(d.item.answer);
+  const parts = judgeAnswerParts(d.item.answer, opt);
+  const result = el("judgeResult");
+  result.textContent = isCorrect ? "✓ 正确" : "✗ 错误";
+  result.className = isCorrect ? "ok" : "wrong";
+  // 答对：直接给解析；答错：先亮出正确选项，再给解析
+  el("judgeAnswerText").innerHTML =
+    (isCorrect ? "" : `<span class="judge-correct">正确答案：${renderRich(parts.label)}</span>\n`) +
+    renderRich(parts.explanation);
   el("judgeAnswerBox").classList.remove("hidden");
   el("judgeNextBtn").classList.remove("hidden");
 }
@@ -794,8 +840,8 @@ document.getElementById("readyView").addEventListener("click", startSession);
 document.getElementById("recallView").addEventListener("click", revealAnswer);
 document.getElementById("againBtn").addEventListener("click", startSession);
 document.getElementById("backBtn").addEventListener("click", goBack);
-document.getElementById("judgeTrueBtn").addEventListener("click", () => judgeChoose(true));
-document.getElementById("judgeFalseBtn").addEventListener("click", () => judgeChoose(false));
+document.getElementById("judgeLeftBtn").addEventListener("click", () => judgeChoose(0));
+document.getElementById("judgeRightBtn").addEventListener("click", () => judgeChoose(1));
 document.getElementById("judgeNextBtn").addEventListener("click", judgeNext);
 document.getElementById("exportBtn").addEventListener("click", exportBackup);
 document.getElementById("importBtn").addEventListener("click", () =>
