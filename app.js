@@ -296,8 +296,8 @@ function getDueList() {
   return due;
 }
 
-function buildReviewQueue() {
-  const due = getDueList();
+function buildReviewQueue(source) {
+  const due = source || getDueList();
   if (due.length === 0) return [];
 
   // 急迫度排序：新卡最前，其余按到期时间（越早越急）
@@ -341,7 +341,13 @@ function renderRich(text) {
 
 let queue = [];
 let queueIndex = 0;
-let sessionStats = { done: 0, skipped: 0 };
+// grades：本轮四档评价计数（完成屏回顾卡用，仅内存、不持久化）；
+// startTime：本轮开始时间（完成屏「本轮用时」）。
+let sessionStats = { done: 0, skipped: 0, grades: { "忘记": 0, "困难": 0, "记得": 0, "简单": 0 }, startTime: 0 };
+
+function resetSessionStats() {
+  sessionStats = { done: 0, skipped: 0, grades: { "忘记": 0, "困难": 0, "记得": 0, "简单": 0 }, startTime: Date.now() };
+}
 
 // "上一题"支持：最近一次评价前的状态快照（prevState 为 null 表示评价前无状态）
 let lastAction = null;
@@ -357,8 +363,8 @@ function updateBackBtn() {
 function setActionBar(mode) {
   const bar = document.getElementById("actionBar");
   if (!bar) return;
-  const map = { grade: "gradeOptions", judge: "judgeOptions", ready: "readyOptions", done: "doneOptions" };
-  if (mode === "grade" || mode === "judge" || mode === "ready" || mode === "done") {
+  const map = { grade: "gradeOptions", judge: "judgeOptions", ready: "readyOptions" };
+  if (mode === "grade" || mode === "judge" || mode === "ready") {
     bar.classList.add("expanded");
     for (const key of Object.keys(map)) {
       const el = document.getElementById(map[key]);
@@ -427,14 +433,24 @@ function refreshReadyView() {
 
 function startSession() {
   queue = buildReviewQueue();
+  beginSession();
+}
+
+// 再学新词：只把「从未学习过」的新词组进队列（不动 PDM 到期队列的调度逻辑）
+function startNewWordsSession() {
+  queue = buildReviewQueue(getDueList().filter((d) => !d.st));
+  beginSession();
+}
+
+function beginSession() {
   queueIndex = 0;
-  sessionStats = { done: 0, skipped: 0 };
+  resetSessionStats();
   canGoBack = false;
   lastAction = null;
   updateBackBtn();
   if (queue.length === 0) {
-    showNotice("复习完成，休息一下吧");
-    refreshReadyView();
+    // 无待复习：完成屏平静态（取代过去的「空卡片 + toast」）
+    renderDoneIdle();
     return;
   }
   document.getElementById("readyView").classList.add("hidden");
@@ -610,6 +626,7 @@ function gradeCurrent(grade) {
   // 保存评价前快照，供"上一题"恢复；评价后最多允许回退一步
   lastAction = {
     itemId: d.item.id,
+    grade: grade,
     prevState: state[d.item.id] ? JSON.parse(JSON.stringify(state[d.item.id])) : null
   };
   canGoBack = true;
@@ -618,6 +635,7 @@ function gradeCurrent(grade) {
   saveState();
 
   sessionStats.done += 1;
+  sessionStats.grades[grade] = (sessionStats.grades[grade] || 0) + 1;
   queueIndex += 1;
   updateBackBtn();
   advanceWithSlide(showNext);
@@ -639,6 +657,9 @@ function goBack() {
   saveState();
   // 回退指针并撤销计数
   sessionStats.done = Math.max(0, sessionStats.done - 1);
+  if (action.grade) {
+    sessionStats.grades[action.grade] = Math.max(0, (sessionStats.grades[action.grade] || 0) - 1);
+  }
   queueIndex -= 1;
   updateBackBtn();
   document.getElementById("doneView").classList.add("hidden");
@@ -649,19 +670,156 @@ function goBack() {
 }
 
 function finishSession() {
-  const dueLeft = getDueList().length;
-  const summary = document.getElementById("doneSummary");
-  let msg = `本轮完成 ${sessionStats.done} 项。`;
-  if (dueLeft > 0) {
-    msg += `\n还有 ${dueLeft} 项已到期，为避免同一主题短时间重复，留到下一轮再安排。`;
+  renderDoneSession();
+}
+
+// ---------- 4c. 复习完成屏（v1.18.0） ----------
+// 两种形态：session = 一轮复习刚结束（庆祝 + 本轮回顾卡）；
+//           idle   = 当前无待复习（平静态，取代旧「空卡片 + toast」）。
+// 数据全部来自本轮内存统计与现有复习状态实时计算，不新增任何存储。
+
+function hideCardViews() {
+  for (const id of ["readyView", "recallView", "gradeView", "judgeView", "doneView"]) {
+    document.getElementById(id).classList.add("hidden");
   }
-  summary.textContent = msg;
+}
+
+function showDoneView() {
+  hideCardViews();
   document.getElementById("doneView").classList.remove("hidden");
-  document.getElementById("recallView").classList.add("hidden");
-  document.getElementById("gradeView").classList.add("hidden");
-  document.getElementById("judgeView").classList.add("hidden");
-  setActionBar("done");
+  setActionBar("collapsed");
   document.body.classList.remove("reviewing");
+  updateBackBtn();
+}
+
+// 数字滚动（完成屏轻量动效；target 为 0 或无 rAF 环境时直接落定）
+function countUp(el, target, dur) {
+  if (!el) return;
+  if (!target || typeof requestAnimationFrame !== "function" || typeof performance === "undefined") {
+    el.textContent = String(target || 0);
+    return;
+  }
+  const t0 = performance.now();
+  function step(ts) {
+    const p = Math.min((ts - t0) / dur, 1);
+    el.textContent = String(Math.round(target * (1 - Math.pow(1 - p, 3))));
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// Stats 模块兜底：浏览器中 stats.js 先于 app.js 加载；
+// 沙箱/测试环境缺失时降级为 null（完成屏只隐藏对应信息，不报错）。
+function computeStatsSafe(now) {
+  return (window.Stats && typeof window.Stats.compute === "function")
+    ? window.Stats.compute(state, KNOWLEDGE, now)
+    : null;
+}
+
+// 到期预告：「下一项 X 到期 · 明天待复习 N 项」（无未来到期项时返回空串）
+function nextDueInfo(now) {
+  const dayStart = new Date(now);
+  dayStart.setHours(0, 0, 0, 0);
+  const t0 = dayStart.getTime();
+  let nextTs = null;
+  let tomorrow = 0;
+  for (const topic of KNOWLEDGE) {
+    for (const item of topic.items) {
+      const st = state[item.id];
+      if (!st || typeof st.nextReview !== "number" || st.nextReview <= now) continue;
+      if (nextTs === null || st.nextReview < nextTs) nextTs = st.nextReview;
+      if (st.nextReview >= t0 + MS_DAY && st.nextReview < t0 + 2 * MS_DAY) tomorrow++;
+    }
+  }
+  const parts = [];
+  if (nextTs !== null) {
+    const d = new Date(nextTs);
+    const hm = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+    let when;
+    if (nextTs < t0 + MS_DAY) when = hm;
+    else if (nextTs < t0 + 2 * MS_DAY) when = "明天 " + hm;
+    else when = (d.getMonth() + 1) + "月" + d.getDate() + "日";
+    parts.push("下一项 " + when + " 到期");
+  }
+  if (tomorrow > 0) parts.push("明天待复习 " + tomorrow + " 项");
+  return parts.join(" · ");
+}
+
+// 完成屏公共部分：标题 / 连续天数副标题 / 到期预告，并切换视图
+function renderDoneCommon(titleText) {
+  const el = (id) => document.getElementById(id);
+  el("doneTitle").textContent = titleText;
+  const stats = computeStatsSafe(Date.now());
+  const sub = el("doneSub");
+  if (stats && stats.streak > 0) {
+    sub.textContent = "连续学习 " + stats.streak + " 天";
+    sub.classList.remove("hidden");
+  } else {
+    sub.classList.add("hidden");
+  }
+  const next = el("doneNext");
+  const info = nextDueInfo(Date.now());
+  next.textContent = info;
+  next.classList.toggle("hidden", !info);
+  showDoneView();
+  return stats;
+}
+
+function renderDoneSession() {
+  const el = (id) => document.getElementById(id);
+  renderDoneCommon("本轮复习完成！");
+
+  // 本轮回顾卡：项数 / 用时 / 四档分布
+  el("doneRecap").classList.remove("hidden");
+  countUp(el("doneItems"), sessionStats.done, 600);
+  const secs = Math.max(1, Math.round((Date.now() - sessionStats.startTime) / 1000));
+  if (secs < 90) {
+    el("doneMinutes").textContent = String(secs);
+    el("doneMinUnit").textContent = " 秒";
+  } else {
+    countUp(el("doneMinutes"), Math.round(secs / 60), 600);
+    el("doneMinUnit").textContent = " 分";
+  }
+  const g = sessionStats.grades;
+  const total = Math.max(1, g["忘记"] + g["困难"] + g["记得"] + g["简单"]);
+  el("segForget").style.width = (g["忘记"] / total * 100) + "%";
+  el("segHard").style.width = (g["困难"] / total * 100) + "%";
+  el("segRemember").style.width = (g["记得"] / total * 100) + "%";
+  el("segEasy").style.width = (g["简单"] / total * 100) + "%";
+  el("lgForget").textContent = g["忘记"];
+  el("lgHard").textContent = g["困难"];
+  el("lgRemember").textContent = g["记得"];
+  el("lgEasy").textContent = g["简单"];
+
+  // 轮转上限留下的到期项：说明留到下一轮（沿用旧版文案口径）
+  const dueLeft = getDueList().length;
+  const note = el("doneNote");
+  if (dueLeft > 0) {
+    note.textContent = "还有 " + dueLeft + " 项已到期，为避免同一主题短时间重复，留到下一轮再安排。";
+    note.classList.remove("hidden");
+  } else {
+    note.classList.add("hidden");
+  }
+
+  // 再学新词：仅统计从未学习过的新词（同样受同主题一轮最多 2 张约束）
+  const newQueue = buildReviewQueue(getDueList().filter((d) => !d.st));
+  const newBtn = el("doneNewBtn");
+  if (newQueue.length > 0) {
+    newBtn.textContent = "再学 " + newQueue.length + " 个新词";
+    newBtn.classList.remove("hidden");
+  } else {
+    newBtn.classList.add("hidden");
+  }
+}
+
+function renderDoneIdle() {
+  const el = (id) => document.getElementById(id);
+  const stats = computeStatsSafe(Date.now());
+  const today = stats && stats.last7 && stats.last7.find((d) => d.today);
+  renderDoneCommon(today && today.reviews > 0 ? "今日复习已完成" : "今日没有待复习");
+  el("doneRecap").classList.add("hidden");
+  el("doneNote").classList.add("hidden");
+  el("doneNewBtn").classList.add("hidden");
 }
 
 // ---------- 5. 备份（导出 / 导入；格式与合并逻辑见 sync.js） ----------
@@ -838,8 +996,11 @@ function renderStats() {
 document.getElementById("startBtn").addEventListener("click", startSession);
 document.getElementById("readyView").addEventListener("click", startSession);
 document.getElementById("recallView").addEventListener("click", revealAnswer);
-document.getElementById("againBtn").addEventListener("click", startSession);
 document.getElementById("backBtn").addEventListener("click", goBack);
+// 完成屏三级出口
+document.getElementById("doneStatsBtn").addEventListener("click", openStats);
+document.getElementById("doneNewBtn").addEventListener("click", startNewWordsSession);
+document.getElementById("doneHomeBtn").addEventListener("click", refreshReadyView);
 document.getElementById("judgeLeftBtn").addEventListener("click", () => judgeChoose(0));
 document.getElementById("judgeRightBtn").addEventListener("click", () => judgeChoose(1));
 document.getElementById("judgeNextBtn").addEventListener("click", judgeNext);
@@ -875,4 +1036,9 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-refreshReadyView();
+// 启动：有待复习 → 准备页；无待复习 → 完成屏平静态
+if (getDueList().length === 0) {
+  renderDoneIdle();
+} else {
+  refreshReadyView();
+}

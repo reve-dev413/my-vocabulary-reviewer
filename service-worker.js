@@ -26,7 +26,8 @@ const SHELL = [
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",
-  "./apple-touch-icon.png"
+  "./apple-touch-icon.png",
+  "./hamster-clear.png"
 ];
 
 self.addEventListener("install", (event) => {

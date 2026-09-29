@@ -223,8 +223,49 @@
   .hidden { display: none; }
   .count { font-size: 16px; color: var(--count-text); margin: 12px 0 24px; }
   .progress { font-size: 13px; color: var(--progress-text); margin-bottom: 10px; }
-  .finished { font-size: 18px; font-weight: 600; margin: 12px 0 20px; }
   footer { margin-top: 16px; font-size: 12px; color: var(--footer-text); }
+
+  /* ===== 复习完成屏（v1.18.0）：仓鼠庆祝 + 本轮回顾 + 到期预告 + 三级出口 ===== */
+  /* 仓鼠图标为透明底白脸（hamster-clear.png）：深色模式直接落在卡片上；
+     浅色模式垫一层深色圆，保证白脸可见。 */
+  .done-ham { position: relative; width: 96px; height: 96px; margin: 0 auto 14px; animation: donePop .5s cubic-bezier(.2,1.5,.4,1) both; }
+  .done-ham img { width: 96px; height: 96px; display: block; }
+  [data-theme="light"] .done-ham img { background: #1d1d1f; border-radius: 50%; padding: 12px; }
+  .done-dot { position: absolute; border-radius: 50%; animation: donePop .45s cubic-bezier(.2,1.5,.4,1) both; }
+  .done-dot.d1 { top: -5px; right: -3px; width: 10px; height: 10px; background: #5DCAA5; animation-delay: .3s; }
+  .done-dot.d2 { top: 8px; left: -10px; width: 6px; height: 6px; background: #9FE1CB; animation-delay: .4s; }
+  .done-dot.d3 { bottom: 3px; right: -11px; width: 6px; height: 6px; background: #9FE1CB; animation-delay: .5s; }
+  .done-title { font-size: 20px; font-weight: 600; }
+  .done-sub { font-size: 13px; color: var(--sub-text); margin-top: 6px; }
+  .done-recap { background: var(--tag-bg); border-radius: 14px; padding: 14px 16px; margin-top: 16px; }
+  .done-metrics { display: flex; justify-content: space-around; margin-bottom: 12px; }
+  .done-metric { text-align: center; }
+  .done-num { font-size: 22px; font-weight: 600; }
+  .done-num small { font-size: 12px; font-weight: 400; }
+  .done-lbl { font-size: 12px; color: var(--sub-text); margin-top: 2px; }
+  .done-bar { display: flex; height: 9px; border-radius: 5px; overflow: hidden; margin-bottom: 10px; }
+  .done-bar span { display: block; animation: doneGrow .7s .5s cubic-bezier(.3,.8,.4,1) both; }
+  .done-bar .seg-forget { background: var(--grade-forget); }
+  .done-bar .seg-hard { background: var(--grade-hard); }
+  .done-bar .seg-remember { background: var(--grade-remember); }
+  .done-bar .seg-easy { background: var(--grade-easy); }
+  .done-legend { display: flex; justify-content: space-between; font-size: 12px; }
+  .done-legend b { font-weight: 600; }
+  .done-legend .lg-forget { color: var(--grade-forget); }
+  .done-legend .lg-hard { color: var(--grade-hard); }
+  .done-legend .lg-remember { color: var(--grade-remember); }
+  .done-legend .lg-easy { color: var(--grade-easy); }
+  .done-next { font-size: 13px; color: var(--sub-text); margin-top: 14px; line-height: 1.6; }
+  .done-note { font-size: 12px; color: var(--faint-text); margin-top: 8px; line-height: 1.6; }
+  .done-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+  .done-actions .btn { width: 100%; margin: 0; min-width: 0; }
+  .done-cta-primary { background: #1D9E75; border: 1px solid #1D9E75; color: #fff; }
+  .done-cta-secondary { background: var(--btn-plain-bg); border: 1px solid var(--btn-border); color: var(--text); }
+  .done-cta-text { background: transparent; border: none; color: var(--faint-text); font-size: 14px; min-height: 36px; }
+  .done-fade { animation: doneFadeUp .4s both; }
+  @keyframes donePop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes doneFadeUp { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes doneGrow { from { width: 0; } }
 
   /* ===== 卡片交互：整卡点击显示答案 + 底部操作层（细横线 / 展开为记忆程度） ===== */
   #recallView { cursor: pointer; padding-bottom: 20px; }
@@ -644,10 +685,36 @@
     <button class="btn btn-primary hidden" id="judgeNextBtn">下一张</button>
   </div>
 
-  <!-- 完成状态 -->
+  <!-- 完成状态（v1.18.0）：session = 一轮复习刚结束；idle = 当前无待复习 -->
   <div id="doneView" class="hidden">
-    <div class="finished">✅ 本轮复习完成</div>
-    <div id="doneSummary" class="count"></div>
+    <div class="done-ham">
+      <img src="hamster-clear.png" alt="仓鼠">
+      <span class="done-dot d1"></span><span class="done-dot d2"></span><span class="done-dot d3"></span>
+    </div>
+    <div class="done-title done-fade" id="doneTitle" style="animation-delay:.15s">本轮复习完成！</div>
+    <div class="done-sub done-fade hidden" id="doneSub" style="animation-delay:.25s"></div>
+    <div class="done-recap done-fade hidden" id="doneRecap" style="animation-delay:.35s">
+      <div class="done-metrics">
+        <div class="done-metric"><div class="done-num" id="doneItems">0</div><div class="done-lbl">复习项数</div></div>
+        <div class="done-metric"><div class="done-num"><span id="doneMinutes">0</span><small id="doneMinUnit"> 分</small></div><div class="done-lbl">本轮用时</div></div>
+      </div>
+      <div class="done-bar" id="doneBar">
+        <span class="seg-forget" id="segForget"></span><span class="seg-hard" id="segHard"></span><span class="seg-remember" id="segRemember"></span><span class="seg-easy" id="segEasy"></span>
+      </div>
+      <div class="done-legend">
+        <span class="lg-forget">忘记 <b id="lgForget">0</b></span>
+        <span class="lg-hard">困难 <b id="lgHard">0</b></span>
+        <span class="lg-remember">记得 <b id="lgRemember">0</b></span>
+        <span class="lg-easy">简单 <b id="lgEasy">0</b></span>
+      </div>
+    </div>
+    <div class="done-next done-fade hidden" id="doneNext" style="animation-delay:.45s"></div>
+    <div class="done-note done-fade hidden" id="doneNote" style="animation-delay:.5s"></div>
+    <div class="done-actions done-fade" style="animation-delay:.55s">
+      <button class="btn done-cta-primary" id="doneStatsBtn">查看学习统计</button>
+      <button class="btn done-cta-secondary hidden" id="doneNewBtn">再学新词</button>
+      <button class="btn done-cta-text" id="doneHomeBtn">返回首页</button>
+    </div>
   </div>
 
   <!-- 底部操作层：细横线指示器 / 展开为四档记忆程度或判断题两档 -->
@@ -665,9 +732,6 @@
     <div class="action-options hidden" id="judgeOptions">
       <button class="option" id="judgeLeftBtn" data-judge="false">❌ 错</button>
       <button class="option" id="judgeRightBtn" data-judge="true">✅ 对</button>
-    </div>
-    <div class="action-options hidden" id="doneOptions">
-      <button class="option option-full" id="againBtn">再复习一轮 ▶</button>
     </div>
   </div>
 </div>
@@ -768,7 +832,7 @@
 
 <footer>
   <div>纯本地运行 · 数据只保存在你的浏览器中 · 记得定期「导出进度」</div>
-  <div>v1.17.0</div>
+  <div>v1.18.0</div>
 </footer>
 
 <!-- 数据来源：knowledge-studio 母数据产物（由 tools/build_web_data.py 生成）；旧 knowledge.js 保留不引用 -->
