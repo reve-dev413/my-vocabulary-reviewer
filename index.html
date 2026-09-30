@@ -263,13 +263,16 @@
   .done-num { font-size: 22px; font-weight: 600; }
   .done-num small { font-size: 12px; font-weight: 400; }
   .done-lbl { font-size: 12px; color: var(--sub-text); margin-top: 2px; }
-  /* ===== 掌握度环形图（v1.20.0）：四档无缝隙扇区 + 中心仓鼠（无底边 / 透明底） =====
-     几何：全部在 SVG 的 100×100 用户坐标系里算好，圆心恒为 (50,50)、半径 r=40、线宽 14
-     （环带 33~47）。容器宽高同源（同一个 clamp 表达式）→ 恒为正方形，配合 viewBox
-     等比映射，任意容器尺寸下都是同心圆，等比缩放、不拉伸。
+  /* ===== 掌握度环形图（v1.21.0）：四档无缝隙扇区 + 中心仓鼠「贴纸式叠压」=====
+     几何：全部在 SVG 的 100×100 用户坐标系里算好，圆心恒为 (50,50)、半径 r=40、线宽 16
+     （环带 32~48，厚度 0.40R，分量更重）。容器宽高同源（同一个 clamp 表达式）→ 恒为
+     正方形，配合 viewBox 等比映射，任意容器尺寸下都是同心圆，等比缩放、不拉伸。
      层级（自下而上）：.md-ring z-index:1 → .md-ham z-index:3；父级 isolation:isolate
-     建立独立层叠上下文，中心图标严格叠在全部扇区之上（其半径 22 < 环内径 33，
-     故只占据环心留白区，不遮挡任何扇区）。 */
+     建立独立层叠上下文，中心图标严格叠在全部扇区之上。
+     贴纸式叠压：图标 76%（盒半宽 38 用户单位）—— 耳尖径向达盒半宽的 1.195 倍（≈45.4），
+     脸侧 0.89 倍（≈33.8）→ 耳朵与脸侧都越过环内径 32 压在扇区上，形成前后分层；
+     耳尖 < 环外径 48 且留 ≥2 单位余量，故不会触到或溢出整个环。
+     落在环面上的柔和投影（drop-shadow）把图标从环面「抬起来」，是叠压成立的关键。 */
   .mastery-donut {
     position: relative;
     isolation: isolate;
@@ -280,10 +283,10 @@
   }
   [data-theme="dark"] .mastery-donut { --md-track: rgba(255, 255, 255, .12); }
   .md-ring { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; }
-  .md-track { fill: none; stroke: var(--md-track); stroke-width: 14; }
+  .md-track { fill: none; stroke: var(--md-track); stroke-width: 16; }
   .md-seg {
     fill: none;
-    stroke-width: 14;
+    stroke-width: 16;
     stroke-linecap: butt;                   /* 平头端点：相邻扇区首尾精确接合 → 无缝隙 */
     transition: stroke-width .16s ease, opacity .16s ease;
   }
@@ -293,20 +296,23 @@
   .md-seg.seg-easy { stroke: var(--grade-easy); }
   /* 悬浮：对应扇区沿径向加厚（以中心线为轴双向增厚，不会露出底轨），其余降透明度 */
   .mastery-donut.is-hot .md-seg { opacity: .3; }
-  .mastery-donut.is-hot .md-seg.hot { opacity: 1; stroke-width: 20; }
-  /* 中心仓鼠：绝对居中 + 最高层级；不设任何底色 / 底座（无底边），图片自身为透明底 */
+  .mastery-donut.is-hot .md-seg.hot { opacity: 1; stroke-width: 22; }
+  /* 中心仓鼠：绝对居中 + 最高层级；不设任何底色 / 底座（无底边），图片自身为透明底。
+     78% 使其外接半径越过环内径 → 贴纸式压在扇区上（见上方几何注释）。 */
   .md-ham {
     position: absolute;
     left: 50%; top: 50%;
     z-index: 3;                              /* 高于扇区（1）→ 层叠最上层 */
-    width: 44%; height: 44%;                 /* 父级正方形 → 百分比宽高相等，等比不拉伸 */
+    width: 76%; height: 76%;                 /* 父级正方形 → 百分比宽高相等，等比不拉伸 */
     transform: translate(-50%, -50%);        /* 位移量为自身宽高的一半 → 与环心严格同心 */
     object-fit: contain;                     /* 兜底：极端比例也不变形 */
     pointer-events: none;                    /* 不拦截扇区交互（层级仍最高） */
+    /* 柔和投影分层：把图标从环面上「抬起来」，否则白脸贴在彩色扇区上会显得扁平 */
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .24)) drop-shadow(0 1px 1px rgba(0, 0, 0, .10));
   }
-  /* 浅色卡片上白脸仓鼠对比偏弱：用极轻的投影勾出轮廓，不引入任何底板 */
-  [data-theme="light"] .md-ham {
-    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .16)) drop-shadow(0 0 1px rgba(0, 0, 0, .18));
+  /* 深色底上深投影不可见，但图标边缘仍压在彩色环带上，需保留可辨的分离感 */
+  [data-theme="dark"] .md-ham {
+    filter: drop-shadow(0 2px 5px rgba(0, 0, 0, .62));
   }
   .md-tip {
     height: 22px;                            /* 固定高提示槽：出现 / 消失都不改变布局 */
@@ -775,8 +781,8 @@
         <div class="done-metric"><div class="done-num" id="doneItems">0</div><div class="done-lbl">复习项数</div></div>
         <div class="done-metric"><div class="done-num"><span id="doneMinutes">0</span><small id="doneMinUnit"> 分</small></div><div class="done-lbl">本轮用时</div></div>
       </div>
-      <!-- 掌握度环形图（v1.20.0）：四档扇区首尾相接无缝隙；中心仓鼠无底边、透明底、
-           层级最高（z-index 3 > 扇区 1），绝对居中且只占环心留白区 -->
+      <!-- 掌握度环形图（v1.21.0）：四档扇区首尾相接无缝隙；中心仓鼠无底边、透明底、
+           层级最高（z-index 3 > 扇区 1），绝对居中，并放大到越过环内径形成「贴纸式叠压」 -->
       <div class="mastery-donut" id="masteryDonut">
         <svg class="md-ring" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" role="img" aria-label="四档掌握度分布">
           <circle class="md-track" cx="50" cy="50" r="40"></circle>
@@ -921,7 +927,7 @@
 
 <footer>
   <div>纯本地运行 · 数据只保存在你的浏览器中 · 记得定期「导出进度」</div>
-  <div>v1.20.0</div>
+  <div>v1.21.0</div>
 </footer>
 
 <!-- 数据来源：knowledge-studio 母数据产物（由 tools/build_web_data.py 生成）；旧 knowledge.js 保留不引用 -->
