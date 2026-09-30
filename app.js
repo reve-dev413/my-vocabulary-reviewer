@@ -842,6 +842,10 @@ const DONUT_TIERS = [
   { grade: "简单", key: "segEasy", lg: "lgEasy" },
 ];
 const DONUT_GEO = { cx: 50, cy: 50, r: 40 };
+// 分段缝隙（v1.22.0）：相邻两个「已绘制」扇区之间留出的弧长，单位=SVG 用户单位，
+// 在中心线 r=40 上度量（≈2.865°）。用弧长而非角度定义 → 任意容器尺寸下视觉宽度一致。
+// 单一档位占满时只有 1 段 → 不留缝（否则整圆会断开）；扇区本身过窄时也不留缝。
+const DONUT_GAP_UNITS = 2;
 
 // 角度约定：0° = 12 点方向，顺时针增大
 function donutPoint(deg) {
@@ -869,6 +873,9 @@ function renderMasteryDonut(counts) {
   const el = (id) => document.getElementById(id);
   const vals = DONUT_TIERS.map((t) => Math.max(0, counts[t.grade] || 0));
   const total = vals.reduce((a, b) => a + b, 0);
+  const gapDeg = DONUT_GAP_UNITS / DONUT_GEO.r * 180 / Math.PI;
+  const drawnCount = total > 0 ? vals.filter((v) => v > 0).length : 0;
+  const halfGap = drawnCount > 1 ? gapDeg / 2 : 0;   // 只有一段时不缩边，否则整圆断开
   let cursor = 0;
   const spoken = [];
   DONUT_TIERS.forEach((t, i) => {
@@ -883,10 +890,13 @@ function renderMasteryDonut(counts) {
       path.dataset.pct = "0";
       return;
     }
-    const start = cursor;
-    const end = cursor + v / total * 360;      // 直接首尾相接：无缝隙
-    cursor = end;
-    path.setAttribute("d", donutArc(start, end));
+    const rawStart = cursor;
+    const rawEnd = cursor + v / total * 360;   // 按占比完整铺开 → 四段原始跨度合计恒为 360°
+    cursor = rawEnd;
+    // 两端各内缩半个缝隙；过窄扇区不留缝，避免被缝隙吃光
+    let a = rawStart, b = rawEnd;
+    if (rawEnd - rawStart > gapDeg * 1.5) { a += halfGap; b -= halfGap; }
+    path.setAttribute("d", donutArc(a, b));
     path.dataset.count = String(v);
     path.dataset.pct = String(Math.round(v / total * 100));
     spoken.push(t.grade + " " + v + " 项 " + path.dataset.pct + "%");

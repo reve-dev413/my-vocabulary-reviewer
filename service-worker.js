@@ -27,7 +27,9 @@ const SHELL = [
   "./icon-192.png",
   "./icon-512.png",
   "./apple-touch-icon.png",
-  "./hamster-clear.png"
+  "./hamster-clear.png",
+  "./hamster-md-light.png",
+  "./hamster-md-dark.png"
 ];
 
 self.addEventListener("install", (event) => {
