@@ -765,6 +765,19 @@ function renderDoneCommon(titleText) {
   return stats;
 }
 
+// 完成屏出口权重（v1.19.0）：主按钮 = 完成复习后的首要意图「再学 N 个新词」；
+// 无新词可学时（或 idle 态）回退为「查看学习统计」；「返回首页」恒为文字钮。
+function applyDoneCtaWeights() {
+  const newBtn = document.getElementById("doneNewBtn");
+  const statsBtn = document.getElementById("doneStatsBtn");
+  if (!newBtn || !statsBtn) return;
+  const hasNew = !newBtn.classList.contains("hidden");
+  newBtn.classList.remove("done-cta-secondary");
+  newBtn.classList.toggle("done-cta-primary", hasNew);
+  statsBtn.classList.toggle("done-cta-primary", !hasNew);
+  statsBtn.classList.toggle("done-cta-secondary", hasNew);
+}
+
 function renderDoneSession() {
   const el = (id) => document.getElementById(id);
   renderDoneCommon("本轮复习完成！");
@@ -810,6 +823,7 @@ function renderDoneSession() {
   } else {
     newBtn.classList.add("hidden");
   }
+  applyDoneCtaWeights();
 }
 
 function renderDoneIdle() {
@@ -820,6 +834,7 @@ function renderDoneIdle() {
   el("doneRecap").classList.add("hidden");
   el("doneNote").classList.add("hidden");
   el("doneNewBtn").classList.add("hidden");
+  applyDoneCtaWeights();
 }
 
 // ---------- 5. 备份（导出 / 导入；格式与合并逻辑见 sync.js） ----------
@@ -992,6 +1007,42 @@ function renderStats() {
 }
 
 // ---------- 6. 事件绑定与启动 ----------
+
+// ===== 顶栏「更多」收纳菜单（v1.19.0） =====
+// 顶栏结构在任何状态下恒定为「上一题 + 更多」两项（上一题与更多并列同级），
+// 其余工具按钮收进菜单，功能与顺序不变。结构恒定 = 状态切换时顶栏尺寸不变，
+// 不会出现布局跳动或按钮闪烁。
+function setMoreMenu(open) {
+  const btn = document.getElementById("moreBtn");
+  const menu = document.getElementById("moreMenu");
+  if (!btn || !menu) return;
+  menu.classList.toggle("hidden", !open);
+  btn.setAttribute("aria-expanded", open ? "true" : "false");
+}
+function isMoreMenuOpen() {
+  const menu = document.getElementById("moreMenu");
+  return !!menu && !menu.classList.contains("hidden");
+}
+document.getElementById("moreBtn").addEventListener("click", function (e) {
+  e.stopPropagation();
+  setMoreMenu(!isMoreMenuOpen());
+});
+// 菜单内点选后立即收起（按钮自身的 click 监听先于此处冒泡执行，功能不受影响）
+document.getElementById("moreMenu").addEventListener("click", function (e) {
+  const t = e.target;
+  if (t && typeof t.closest === "function" && t.closest("button")) setMoreMenu(false);
+});
+// 点击页面其他位置 / Esc 关闭
+document.addEventListener("click", function (e) {
+  if (!isMoreMenuOpen()) return;
+  const t = e.target;
+  if (t && typeof t.closest === "function" &&
+      (t.closest("#moreMenu") || t.closest("#moreBtn"))) return;
+  setMoreMenu(false);
+});
+document.addEventListener("keydown", function (e) {
+  if ((e.key === "Escape" || e.key === "Esc") && isMoreMenuOpen()) setMoreMenu(false);
+});
 
 document.getElementById("startBtn").addEventListener("click", startSession);
 document.getElementById("readyView").addEventListener("click", startSession);
