@@ -112,6 +112,7 @@ function loadStateForGuard() {
 // 所有参数集中在此，调整难度只需改这里（人为设定初始值，非墨墨参数）
 const PDM_CONFIG = {
   targetRetention: 0.85,     // 目标回忆概率 p（预计 R 降到 p 时就再见）
+  stabilityScale: 2,         // λ：稳定性时间尺度（λ=1 = 旧行为；2 = 受控校准值，只放大 retention 时间尺度与计划间隔）
   dInit: 0.30,               // 新对象难度初值
   dMin: 0.05, dMax: 0.95,    // 难度钳位
   sMin: 0.3, sMax: 730,      // 稳定性钳位（天，约 7 小时 ~ 2 年）
@@ -230,12 +231,12 @@ function ensureState(itemId) {
 
 // 核心：用本次评价更新记忆状态，返回下次复习时间（毫秒）
 // PDM v1（详见 DESIGN-MEMORY-ALGORITHM.md）：
-//   ① R = 2^(-elapsed/S) 估计当前回忆概率；credit = 1 - R（复习得越晚还能记住，credit 越大）
+//   ① R = 2^(-elapsed/(λ·S)) 估计当前回忆概率；credit = 1 - R（复习得越晚还能记住，credit 越大）
 //   ② 首次复习：S 查表定初始稳定性；D 用固定增量
 //   ③ 后续复习：S_new = S × (base + creditWeight × credit) × (1 - 0.15 × D)
 //   ④ D：忘记 +0.02 + 0.08×R（R 越高 = 越出乎模型预期的遗忘 → 难度加得越多）；
 //      困难 +0.03；记得 0；简单 -0.02
-//   ⑤ 下次间隔：忘记 → clamp(S×k, 1天, 2天)（24~48h 恢复）；其他 → max(S×k, 12小时)
+//   ⑤ 下次间隔：忘记 → clamp(S×λ×k, 1天, 2天)（24~48h 恢复）；其他 → max(S×λ×k, 12小时)
 function applyReview(st, grade, now) {
   const cfg = PDM_CONFIG;
 
@@ -246,7 +247,7 @@ function applyReview(st, grade, now) {
     D = clamp(st.difficulty + cfg.dDelta[grade], cfg.dMin, cfg.dMax);
   } else {
     const elapsedDays = st.lastReview ? (now - st.lastReview) / MS_DAY : 0;
-    const R = Math.pow(2, -elapsedDays / st.stability);
+    const R = Math.pow(2, -elapsedDays / (st.stability * cfg.stabilityScale));
     const credit = 1 - R;
     const mult = cfg.base[grade] + cfg.creditWeight[grade] * credit;
     S = clamp(st.stability * mult * (1 - cfg.damping * st.difficulty), cfg.sMin, cfg.sMax);
@@ -257,8 +258,8 @@ function applyReview(st, grade, now) {
     }
   }
 
-  // 下次复习间隔（天）：k = log2(1/p)
-  let intervalDays = S * K_INTERVAL;
+  // 下次复习间隔（天）：k = log2(1/p)，再乘 λ（stabilityScale）
+  let intervalDays = S * K_INTERVAL * cfg.stabilityScale;
   if (grade === "忘记") {
     intervalDays = clamp(intervalDays, cfg.lapseFloorDays, cfg.lapseCapDays);
   } else {
