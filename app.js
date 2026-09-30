@@ -794,15 +794,7 @@ function renderDoneSession() {
     el("doneMinUnit").textContent = " 分";
   }
   const g = sessionStats.grades;
-  const total = Math.max(1, g["忘记"] + g["困难"] + g["记得"] + g["简单"]);
-  el("segForget").style.width = (g["忘记"] / total * 100) + "%";
-  el("segHard").style.width = (g["困难"] / total * 100) + "%";
-  el("segRemember").style.width = (g["记得"] / total * 100) + "%";
-  el("segEasy").style.width = (g["简单"] / total * 100) + "%";
-  el("lgForget").textContent = g["忘记"];
-  el("lgHard").textContent = g["困难"];
-  el("lgRemember").textContent = g["记得"];
-  el("lgEasy").textContent = g["简单"];
+  renderMasteryDonut(g);
 
   // 轮转上限留下的到期项：说明留到下一轮（沿用旧版文案口径）
   const dueLeft = getDueList().length;
@@ -835,6 +827,116 @@ function renderDoneIdle() {
   el("doneNote").classList.add("hidden");
   el("doneNewBtn").classList.add("hidden");
   applyDoneCtaWeights();
+}
+
+// ---------- 4.5 掌握度环形图（v1.20.0） ----------
+// 几何全在 SVG 用户坐标系（100×100，圆心 50,50）内计算：半径 40、线宽 14（环带 33~47）。
+// 无缝隙：相邻扇区共享同一端点（平头端点 + 角度首尾相接），不预留任何角度间隙；
+// 单一档位占满时走「两段半圆」的整圆路径（A 命令起终点重合会退化成空路径）。
+// 某档为 0 时该扇区不绘制，但容器、底轨与图例照常 → 布局恒定，不跳动、不塌陷。
+const DONUT_TIERS = [
+  { grade: "忘记", key: "segForget", lg: "lgForget" },
+  { grade: "困难", key: "segHard", lg: "lgHard" },
+  { grade: "记得", key: "segRemember", lg: "lgRemember" },
+  { grade: "简单", key: "segEasy", lg: "lgEasy" },
+];
+const DONUT_GEO = { cx: 50, cy: 50, r: 40 };
+
+// 角度约定：0° = 12 点方向，顺时针增大
+function donutPoint(deg) {
+  const rad = (deg - 90) * Math.PI / 180;
+  return [DONUT_GEO.cx + DONUT_GEO.r * Math.cos(rad), DONUT_GEO.cy + DONUT_GEO.r * Math.sin(rad)];
+}
+
+function donutArc(startDeg, endDeg) {
+  const s = donutPoint(startDeg);
+  const f = (n) => n.toFixed(2);
+  if (endDeg - startDeg >= 359.999) {
+    const m = donutPoint(startDeg + 180);
+    const e = donutPoint(startDeg + 360);
+    return "M" + f(s[0]) + " " + f(s[1]) +
+      "A" + DONUT_GEO.r + " " + DONUT_GEO.r + " 0 0 1 " + f(m[0]) + " " + f(m[1]) +
+      "A" + DONUT_GEO.r + " " + DONUT_GEO.r + " 0 0 1 " + f(e[0]) + " " + f(e[1]);
+  }
+  const e = donutPoint(endDeg);
+  const large = endDeg - startDeg > 180 ? 1 : 0;
+  return "M" + f(s[0]) + " " + f(s[1]) +
+    "A" + DONUT_GEO.r + " " + DONUT_GEO.r + " 0 " + large + " 1 " + f(e[0]) + " " + f(e[1]);
+}
+
+function renderMasteryDonut(counts) {
+  const el = (id) => document.getElementById(id);
+  const vals = DONUT_TIERS.map((t) => Math.max(0, counts[t.grade] || 0));
+  const total = vals.reduce((a, b) => a + b, 0);
+  let cursor = 0;
+  const spoken = [];
+  DONUT_TIERS.forEach((t, i) => {
+    const v = vals[i];
+    const path = el(t.key);
+    const legend = el(t.lg);
+    if (legend) legend.textContent = String(v);
+    if (!path) return;
+    if (v <= 0 || total <= 0) {
+      path.removeAttribute("d");
+      path.dataset.count = "0";
+      path.dataset.pct = "0";
+      return;
+    }
+    const start = cursor;
+    const end = cursor + v / total * 360;      // 直接首尾相接：无缝隙
+    cursor = end;
+    path.setAttribute("d", donutArc(start, end));
+    path.dataset.count = String(v);
+    path.dataset.pct = String(Math.round(v / total * 100));
+    spoken.push(t.grade + " " + v + " 项 " + path.dataset.pct + "%");
+  });
+  const wrap = el("masteryDonut");
+  const svg = wrap && wrap.querySelector(".md-ring");
+  if (svg) svg.setAttribute("aria-label", "四档掌握度分布：" + (spoken.length ? spoken.join("，") : "本轮无评价记录"));
+  masteryHighlight(null);
+}
+
+// 悬浮高亮：对应扇区加厚 + 提示槽显示「档位 · 数值 · 占比」
+function masteryHighlight(grade) {
+  const wrap = document.getElementById("masteryDonut");
+  if (!wrap) return;
+  const tip = document.getElementById("mdTip");
+  if (!grade) {
+    wrap.classList.remove("is-hot");
+    wrap.querySelectorAll(".md-seg").forEach((p) => p.classList.remove("hot"));
+    if (tip) tip.textContent = "";
+    return;
+  }
+  wrap.classList.add("is-hot");
+  wrap.querySelectorAll(".md-seg").forEach((p) => {
+    const on = p.dataset.grade === grade && !!p.getAttribute("d");
+    p.classList.toggle("hot", on);
+    if (on && tip) tip.textContent = grade + " · " + p.dataset.count + " 项 · " + p.dataset.pct + "%";
+  });
+}
+
+function bindMasteryDonutHover() {
+  const wrap = document.getElementById("masteryDonut");
+  if (!wrap) return;
+  wrap.querySelectorAll(".md-seg").forEach((p) => {
+    const hot = () => { if (p.getAttribute("d")) masteryHighlight(p.dataset.grade); };
+    p.addEventListener("pointerenter", hot);
+    p.addEventListener("pointerleave", () => masteryHighlight(null));
+    p.addEventListener("click", hot);
+  });
+  document.querySelectorAll(".done-legend [data-grade]").forEach((s) => {
+    const hot = () => masteryHighlight(s.dataset.grade);
+    s.addEventListener("pointerenter", hot);
+    s.addEventListener("pointerleave", () => masteryHighlight(null));
+    s.addEventListener("click", hot);
+  });
+  // 触屏：点空白处取消高亮（鼠标端无副作用）
+  document.addEventListener("pointerdown", (e) => {
+    const t = e.target;
+    const inside = t && typeof t.closest === "function" &&
+      (t.closest("#masteryDonut") || t.closest(".done-legend"));
+    if (!inside) masteryHighlight(null);
+  }, true);
 }
 
 // ---------- 5. 备份（导出 / 导入；格式与合并逻辑见 sync.js） ----------
@@ -1045,6 +1147,8 @@ document.addEventListener("keydown", function (e) {
 });
 
 document.getElementById("startBtn").addEventListener("click", startSession);
+// 掌握度环形图：扇区 / 图例悬浮高亮（绑定一次即可，扇区是固定 DOM，只换 d 属性）
+bindMasteryDonutHover();
 document.getElementById("readyView").addEventListener("click", startSession);
 document.getElementById("recallView").addEventListener("click", revealAnswer);
 document.getElementById("backBtn").addEventListener("click", goBack);
