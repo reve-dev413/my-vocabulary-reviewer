@@ -309,15 +309,18 @@
      「竖毛空心」问题随换图一并解决）。 */
   .md-ham {
     position: absolute;
-    left: 50%; top: 50%;
+    inset: 0;                                /* 上/右/下/左全 0 + margin:auto → 严格居中 */
+    margin: auto;
     z-index: 3;                              /* 高于扇区（1）→ 层叠最上层 */
     width: 73%; height: 73%;                 /* 父级正方形 → 百分比宽高相等，等比不拉伸；73% = 耳尖校准值 */
-    transform: translate(-50%, -50%);        /* 位移量为自身宽高的一半 → 与环心严格同心 */
     object-fit: contain;                     /* 兜底：极端比例也不变形 */
     pointer-events: none;                    /* 不拦截扇区交互（层级仍最高） */
     /* 柔和投影分层：把图标从环面上「抬起来」，否则白脸贴在彩色扇区上会显得扁平 */
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .24)) drop-shadow(0 1px 1px rgba(0, 0, 0, .10));
     content: url("hamster-md-light.png");    /* 浅色模式：深暖棕五官 */
+    /* v1.23.1：弃用 translate(-50%,-50%) 居中 —— 该写法在线上触发 Chromium 绘制异常
+       （此 img 被按父容器尺寸而非自身盒绘制，巨幅溢出环形图；headless 实测复现，
+       去掉 transform 立即恢复）。inset:0 + margin:auto 是无 transform 的等效居中。 */
   }
   /* 深色底上深投影不可见，但图标边缘仍压在彩色环带上，需保留可辨的分离感 */
   [data-theme="dark"] .md-ham {
@@ -938,7 +941,7 @@
 
 <footer>
   <div>纯本地运行 · 数据只保存在你的浏览器中 · 记得定期「导出进度」</div>
-  <div>v1.23.0</div>
+  <div>v1.23.1</div>
 </footer>
 
 <!-- 数据来源：knowledge-studio 母数据产物（由 tools/build_web_data.py 生成）；旧 knowledge.js 保留不引用 -->
