@@ -500,6 +500,21 @@
     .answer { font-size: 17px; }
   }
 
+  /* ===== 移动端复习态纵向布局优化（2026-10-05）=====
+     只动布局，不改视觉风格 / 答题逻辑 / PDM / 队列 / 数据结构：
+     - 复习中 footer 退出主布局
+     - 卡片适度加高（min(66dvh,600px)，比原 320px 明显更高但不拉满整屏 → 消除卡外大部分黑色空白）
+     - 卡片内容自上而下（进度 / 题型 / 题干贴上部），不再垂直居中 → 消除顶部巨大空白
+     - 答案按钮条抬离卡片底边，下方保留安全留白（按钮落在屏幕下半部、明显高于最底端，符合拇指握持）
+     全部圈在 body.reviewing 态 + 手机断点内，PC / 首页 / 完成屏均不受影响 */
+  @media (max-width: 600px) {
+    body.reviewing footer { display: none; }
+    body.reviewing .card { min-height: min(66dvh, 600px); justify-content: flex-start; }
+    body.reviewing .action-bar { bottom: 40px; }
+    body.reviewing #gradeView,
+    body.reviewing #judgeView { padding-bottom: 96px; }
+  }
+
   /* 平板（iPad 竖屏等）：卡片与字号适度加大 */
   @media (min-width: 601px) and (max-width: 1024px) {
     .card { max-width: 680px; }
@@ -941,7 +956,7 @@
 
 <footer>
   <div>纯本地运行 · 数据只保存在你的浏览器中 · 记得定期「导出进度」</div>
-  <div>v1.23.1</div>
+  <div>v1.23.3</div>
 </footer>
 
 <!-- 数据来源：knowledge-studio 母数据产物（由 tools/build_web_data.py 生成）；旧 knowledge.js 保留不引用 -->
