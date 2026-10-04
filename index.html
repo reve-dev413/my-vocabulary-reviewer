@@ -500,19 +500,81 @@
     .answer { font-size: 17px; }
   }
 
-  /* ===== 移动端复习态纵向布局优化（2026-10-05）=====
-     只动布局，不改视觉风格 / 答题逻辑 / PDM / 队列 / 数据结构：
-     - 复习中 footer 退出主布局
-     - 卡片适度加高（min(66dvh,600px)，比原 320px 明显更高但不拉满整屏 → 消除卡外大部分黑色空白）
-     - 卡片内容自上而下（进度 / 题型 / 题干贴上部），不再垂直居中 → 消除顶部巨大空白
-     - 答案按钮条抬离卡片底边，下方保留安全留白（按钮落在屏幕下半部、明显高于最底端，符合拇指握持）
-     全部圈在 body.reviewing 态 + 手机断点内，PC / 首页 / 完成屏均不受影响 */
+  /* ===== 移动端纵向布局优化（2026-10-05 / v1.23.4）=====
+     只动布局与点击热区，不改视觉风格 / 答题逻辑 / PDM / 队列 / 数据结构 / 同步：
+     - 复习中 footer 退出主布局，卡片适度加高（min(66dvh,600px)）→ 消除卡外黑色空白
+     - 卡头（第 X/X 项 / 题型 / 关键词）贴卡片顶部，题目区在剩余空间垂直居中
+     - 开始界面复用同一套尺寸 / 边距 / 按钮位（:has 精准圈定，不波及完成屏）
+     - 按钮条整条贴卡片底边（内容 48 + 底部留白 40）→ 选项竖线贯穿到底、文字垂直居中
+     - 「开始复习 / 点击查看答案」热区铺满整张卡片，不溢出卡片边界
+     全部圈在手机断点内，PC 端零改动 */
   @media (max-width: 600px) {
+    /* —— 开始界面：与答题界面同尺寸 / 边距 / 按钮位 —— */
+    body:has(#readyView:not(.hidden)) .card { min-height: min(66dvh, 600px); }
+    body:has(#readyView:not(.hidden)) footer { display: none; }
+    body:has(#readyView:not(.hidden)) .action-bar {
+      height: 88px;
+      border-radius: 0 0 13px 13px;   /* 贴合卡片内圆角（14px - 1px border），避免直角撑破卡片底角 */
+    }
+
+    /* —— 复习态：footer 退出布局、卡片高度、内容分层居中 —— */
     body.reviewing footer { display: none; }
-    body.reviewing .card { min-height: min(66dvh, 600px); justify-content: flex-start; }
-    body.reviewing .action-bar { bottom: 40px; }
+    body.reviewing .card { min-height: min(66dvh, 600px); justify-content: center; }
+    /* 评价 / 判断态底部为 88px 展开态按钮条预留 → 内容在「按钮条以上」居中 */
+    body:has(#gradeView:not(.hidden)) .card,
+    body:has(#judgeView:not(.hidden)) .card { padding-bottom: calc(24px + 88px); }
+    /* ★ 必须带 :not(.hidden)：display:flex 特异性高于 .hidden{display:none}，
+         否则会把三个隐藏视图一并显形（卡片高度逐次累加） */
+    body.reviewing #recallView:not(.hidden),
+    body.reviewing #gradeView:not(.hidden),
+    body.reviewing #judgeView:not(.hidden) {
+      display: flex; flex-direction: column;
+      padding-bottom: 0;
+    }
+    /* flex 化后 .tag（inline-block）会被 align-items: stretch 拉成整条 → 还原为内容宽 */
+    body.reviewing #recallView:not(.hidden) > .tag,
+    body.reviewing #gradeView:not(.hidden) > .tag,
+    body.reviewing #judgeView:not(.hidden) > .tag { align-self: center; }
+    /* 视图撑满卡片可用区：.card 只有 min-height（主轴非确定），flex-grow / auto margin
+       都拿不到可分配空间 → 用等值 min-height 直接把视图撑到卡片内容盒高度。
+       50  = 回忆态卡片上下内边距（24×2）+ 2px border
+       138 = 评价 / 判断态（上 24 + 下 24+88 按钮条预留）+ 2px border */
+    body.reviewing #recallView:not(.hidden) { min-height: calc(min(66dvh, 600px) - 50px); }
+    body.reviewing #gradeView:not(.hidden),
+    body.reviewing #judgeView:not(.hidden) { min-height: calc(min(66dvh, 600px) - 138px); }
+
+    /* 回忆态：题目 + 提示 作为一组居中 */
+    body.reviewing #recallView .prompt { margin-top: auto; }
+    body.reviewing #recallView .recall-hint { margin-bottom: auto; }
+
+    /* 评价态：题目区首 / 末可见元素各吸收一段等量空白（尾部元素按实际择一，避免多个 auto 均分） */
+    body.reviewing #gradeView:has(#promptInAnswer:not(.hidden)) #promptInAnswer { margin-top: auto; }
+    body.reviewing #gradeView:not(:has(#promptInAnswer:not(.hidden))) #answerText { margin-top: auto; }
+    body.reviewing #gradeView:has(#relatedBox:not(.hidden)) #relatedBox { margin-bottom: auto; }
+    body.reviewing #gradeView:not(:has(#relatedBox:not(.hidden))):has(#materialsBox:not(.hidden)) #materialsBox { margin-bottom: auto; }
+    body.reviewing #gradeView:not(:has(#relatedBox:not(.hidden))):not(:has(#materialsBox:not(.hidden))) #answerText { margin-bottom: auto; }
+
+    /* 判断态：答案未展开 → 题目单独居中；展开后 → 题目 + 答案 作为一组居中 */
+    body.reviewing #judgeView .prompt { margin-top: auto; }
+    body.reviewing #judgeView:has(#judgeAnswerBox.hidden) .prompt { margin-bottom: auto; }
+    body.reviewing #judgeView #judgeAnswerBox:not(.hidden) { margin-bottom: auto; }
     body.reviewing #gradeView,
-    body.reviewing #judgeView { padding-bottom: 96px; }
+    body.reviewing #judgeView { padding-bottom: 0; }
+
+    /* —— 按钮条统一贴卡片底边：回忆态 4px 细线落到底；展开态整条 = 48 内容 + 40 留白 —— */
+    body.reviewing .action-bar { bottom: 0; }
+    body.reviewing .action-bar.expanded {
+      height: 88px;
+      border-radius: 0 0 13px 13px;
+    }
+
+    /* —— 整卡点击热区：透明覆盖层铺满卡片内沿（含 padding），不超出卡片边界 —— */
+    #readyView::before,
+    body.reviewing #recallView::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+    }
   }
 
   /* 平板（iPad 竖屏等）：卡片与字号适度加大 */
@@ -956,7 +1018,7 @@
 
 <footer>
   <div>纯本地运行 · 数据只保存在你的浏览器中 · 记得定期「导出进度」</div>
-  <div>v1.23.3</div>
+  <div>v1.23.4</div>
 </footer>
 
 <!-- 数据来源：knowledge-studio 母数据产物（由 tools/build_web_data.py 生成）；旧 knowledge.js 保留不引用 -->
