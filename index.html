@@ -903,6 +903,9 @@
          故「再学 N 个新词」为主按钮；「查看学习统计」降为次级（低频动作）。 -->
     <div class="done-actions done-fade" style="animation-delay:.55s">
       <button class="btn done-cta-primary hidden" id="doneNewBtn">再学新词</button>
+      <!-- 「继续复习」：完成一轮后仍有到期卡时出现，点击直接进入下一轮（重新构建队列）。
+           复用 done-cta-secondary，与「查看学习统计」同级同规格，不引入新视觉语言。 -->
+      <button class="btn done-cta-secondary hidden" id="doneContinueBtn">继续复习</button>
       <button class="btn done-cta-secondary" id="doneStatsBtn">查看学习统计</button>
       <button class="btn done-cta-text" id="doneHomeBtn">返回首页</button>
     </div>
@@ -1023,7 +1026,7 @@
 
 <footer>
   <div>纯本地运行 · 数据只保存在你的浏览器中 · 记得定期「导出进度」</div>
-  <div>v1.23.5</div>
+  <div>v1.23.6</div>
 </footer>
 
 <!-- 数据来源：knowledge-studio 母数据产物（由 tools/build_web_data.py 生成）；旧 knowledge.js 保留不引用 -->

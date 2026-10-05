@@ -766,17 +766,29 @@ function renderDoneCommon(titleText) {
   return stats;
 }
 
-// 完成屏出口权重（v1.19.0）：主按钮 = 完成复习后的首要意图「再学 N 个新词」；
-// 无新词可学时（或 idle 态）回退为「查看学习统计」；「返回首页」恒为文字钮。
+// 完成屏出口权重（v1.19.0；v1.23.6 加入「继续复习」优先级）：
+// 主按钮 = 完成复习后的首要意图，按「有到期卡 → 继续复习 > 有未学新词 → 再学新词 >
+// 都没有 → 查看学习统计」三级回退；其余按钮一律次级；「返回首页」恒为文字钮。
 function applyDoneCtaWeights() {
   const newBtn = document.getElementById("doneNewBtn");
   const statsBtn = document.getElementById("doneStatsBtn");
+  const contBtn = document.getElementById("doneContinueBtn");
   if (!newBtn || !statsBtn) return;
   const hasNew = !newBtn.classList.contains("hidden");
-  newBtn.classList.remove("done-cta-secondary");
-  newBtn.classList.toggle("done-cta-primary", hasNew);
-  statsBtn.classList.toggle("done-cta-primary", !hasNew);
-  statsBtn.classList.toggle("done-cta-secondary", hasNew);
+  // 「继续复习」可见 = 仍有到期卡（其 hidden 状态由 renderDoneSession 依 dueLeft 设定）
+  const hasDue = !!(contBtn && !contBtn.classList.contains("hidden"));
+
+  // 三级主按钮：到期卡优先（用户此刻最该做的是继续消化），其次新词，最后统计
+  newBtn.classList.toggle("done-cta-primary", hasNew && !hasDue);
+  newBtn.classList.toggle("done-cta-secondary", !hasNew || hasDue);
+
+  statsBtn.classList.toggle("done-cta-primary", !hasDue && !hasNew);
+  statsBtn.classList.toggle("done-cta-secondary", hasDue || hasNew);
+
+  if (contBtn) {
+    contBtn.classList.toggle("done-cta-primary", hasDue);
+    contBtn.classList.toggle("done-cta-secondary", !hasDue);
+  }
 }
 
 function renderDoneSession() {
@@ -816,6 +828,12 @@ function renderDoneSession() {
   } else {
     newBtn.classList.add("hidden");
   }
+
+  // 继续复习（v1.24.0）：完成一轮后若仍有到期卡，提供直接进入下一轮的入口。
+  // 判定沿用上方 dueLeft（= getDueList().length，同一时刻同一口径），不新增到期计算。
+  const contBtn = el("doneContinueBtn");
+  if (contBtn) contBtn.classList.toggle("hidden", dueLeft === 0);
+
   applyDoneCtaWeights();
 }
 
@@ -827,6 +845,7 @@ function renderDoneIdle() {
   el("doneRecap").classList.add("hidden");
   el("doneNote").classList.add("hidden");
   el("doneNewBtn").classList.add("hidden");
+  el("doneContinueBtn").classList.add("hidden");
   applyDoneCtaWeights();
 }
 
@@ -1166,6 +1185,9 @@ document.getElementById("backBtn").addEventListener("click", goBack);
 // 完成屏三级出口
 document.getElementById("doneStatsBtn").addEventListener("click", openStats);
 document.getElementById("doneNewBtn").addEventListener("click", startNewWordsSession);
+// 「继续复习」：直接复用现有 startSession()（重建队列 → 只装当时仍到期的卡；
+// 队列为空时 beginSession() 内部走 renderDoneIdle()，不会产生空 session）。
+document.getElementById("doneContinueBtn").addEventListener("click", startSession);
 document.getElementById("doneHomeBtn").addEventListener("click", refreshReadyView);
 document.getElementById("judgeLeftBtn").addEventListener("click", () => judgeChoose(0));
 document.getElementById("judgeRightBtn").addEventListener("click", () => judgeChoose(1));
