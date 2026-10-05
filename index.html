@@ -500,13 +500,14 @@
     .answer { font-size: 17px; }
   }
 
-  /* ===== 移动端纵向布局优化（2026-10-05 / v1.23.4）=====
+  /* ===== 移动端纵向布局优化（2026-10-05 / v1.23.4，v1.23.5 微调回忆态定位）=====
      只动布局与点击热区，不改视觉风格 / 答题逻辑 / PDM / 队列 / 数据结构 / 同步：
      - 复习中 footer 退出主布局，卡片适度加高（min(66dvh,600px)）→ 消除卡外黑色空白
      - 卡头（第 X/X 项 / 题型 / 关键词）贴卡片顶部，题目区在剩余空间垂直居中
      - 开始界面复用同一套尺寸 / 边距 / 按钮位（:has 精准圈定，不波及完成屏）
      - 按钮条整条贴卡片底边（内容 48 + 底部留白 40）→ 选项竖线贯穿到底、文字垂直居中
      - 「开始复习 / 点击查看答案」热区铺满整张卡片，不溢出卡片边界
+     - v1.23.5：回忆态改为「视觉重心偏上」——题目落卡片中部偏上，提示贴卡片底部
      全部圈在手机断点内，PC 端零改动 */
   @media (max-width: 600px) {
     /* —— 开始界面：与答题界面同尺寸 / 边距 / 按钮位 —— */
@@ -539,13 +540,17 @@
        都拿不到可分配空间 → 用等值 min-height 直接把视图撑到卡片内容盒高度。
        50  = 回忆态卡片上下内边距（24×2）+ 2px border
        138 = 评价 / 判断态（上 24 + 下 24+88 按钮条预留）+ 2px border */
-    body.reviewing #recallView:not(.hidden) { min-height: calc(min(66dvh, 600px) - 50px); }
+    body.reviewing #recallView:not(.hidden) { min-height: calc(min(66dvh, 600px) - 50px); padding-bottom: 0; }
     body.reviewing #gradeView:not(.hidden),
     body.reviewing #judgeView:not(.hidden) { min-height: calc(min(66dvh, 600px) - 138px); }
 
-    /* 回忆态：题目 + 提示 作为一组居中 */
-    body.reviewing #recallView .prompt { margin-top: auto; }
-    body.reviewing #recallView .recall-hint { margin-bottom: auto; }
+    /* 回忆态：视觉重心偏上（非数学居中）。
+       - 题目：上方留一段按视图高度等比缩放的空隙（视图高的 18%），使题目落在卡片中部偏上；
+         不用 margin:auto —— auto 会让上下空白等分，那就退回"垂直居中"了。
+       - 提示：margin-top:auto 吸走其余全部空白 → 紧贴卡片底部。
+       - padding-bottom:0 抵消 #recallView 原有的 20px 底内边距，让提示真正落到底。 */
+    body.reviewing #recallView .prompt { margin-top: calc((min(66dvh, 600px) - 50px) * 0.18); }
+    body.reviewing #recallView .recall-hint { margin-top: auto; margin-bottom: 0; }
 
     /* 评价态：题目区首 / 末可见元素各吸收一段等量空白（尾部元素按实际择一，避免多个 auto 均分） */
     body.reviewing #gradeView:has(#promptInAnswer:not(.hidden)) #promptInAnswer { margin-top: auto; }
@@ -1018,7 +1023,7 @@
 
 <footer>
   <div>纯本地运行 · 数据只保存在你的浏览器中 · 记得定期「导出进度」</div>
-  <div>v1.23.4</div>
+  <div>v1.23.5</div>
 </footer>
 
 <!-- 数据来源：knowledge-studio 母数据产物（由 tools/build_web_data.py 生成）；旧 knowledge.js 保留不引用 -->
