@@ -639,6 +639,52 @@
   }
   .modal-input:focus { border-color: var(--accent); }
 
+  /* ===== 提前复习数量选择（v1.23.8）=====
+     复用 .btn / .option-full / .modal-* 的视觉语言（pill 按钮、中性底、同字号），
+     不引入新的设计语言；仅补齐「作为浮层内独立列表」所需的布局。 */
+  .picker-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: var(--modal-mask);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .picker-overlay.hidden { display: none; }
+  .picker-box {
+    background: var(--modal-bg); border: 1px solid var(--card-border); border-radius: 18px;
+    padding: 24px; width: 100%; max-width: 360px;
+    text-align: center;
+  }
+  .picker-title { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+  .picker-hint { font-size: 13px; color: var(--modal-desc-text); margin-bottom: 16px; line-height: 1.5; }
+  .picker-options { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+  /* 浮层内的 .option-full：脱离 action-bar 的绝对定位/flex:1，做成整行可点条目 */
+  .picker-options .option {
+    position: static; flex: none; inset: auto;
+    display: block; text-align: center;
+    padding: 12px 16px; min-height: 44px;
+    border: 1px solid var(--btn-border); border-radius: 12px;
+    background: var(--btn-plain-bg);
+  }
+  .picker-options .option + .option { border-left: 1px solid var(--btn-border); }
+  .picker-options .option.is-disabled { opacity: .35; cursor: default; }
+  .picker-options .option.is-disabled:hover { background: var(--btn-plain-bg); }
+  .picker-custom { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .picker-input {
+    flex: 1; min-width: 0; height: 44px; padding: 0 18px;
+    font-size: 16px;                     /* 16px 避免 iOS 聚焦自动放大 */
+    border: 1px solid var(--input-border); border-radius: 9999px;
+    box-sizing: border-box; outline: none;
+    background: var(--input-bg); color: var(--text);
+    transition: border-color .12s ease;
+  }
+  .picker-input:focus { border-color: var(--accent); }
+  .picker-input:focus-visible { outline: 2px solid var(--accent-focus); outline-offset: 2px; }
+  .picker-custom .btn { margin: 0; min-width: 84px; flex: none; }
+  .picker-err { font-size: 13px; color: var(--grade-forget); margin-bottom: 10px; line-height: 1.5; }
+  .picker-err.hidden { display: none; }
+  .picker-box .btn-plain { width: 100%; margin: 0; }
+  body.picker-open { overflow: hidden; }
+
   /* ===== 深色模式：记忆程度选项颜色（已由主题变量定义，悬停极微亮） ===== */
 
   /* ===== 版本更新提示（update.js 动态创建，深浅色自适应） ===== */
@@ -914,8 +960,32 @@
       <!-- 「继续复习」：完成一轮后仍有到期卡时出现，点击直接进入下一轮（重新构建队列）。
            复用 done-cta-secondary，与「查看学习统计」同级同规格，不引入新视觉语言。 -->
       <button class="btn done-cta-secondary hidden" id="doneContinueBtn">继续复习</button>
+      <!-- 「提前复习」（v1.23.8）：有未来待复习词时出现，点击展开数量选择。
+           复用同一套 .btn / done-cta-* 视觉，不新增卡片式设计。 -->
+      <button class="btn done-cta-secondary hidden" id="doneEarlyBtn">提前复习</button>
       <button class="btn done-cta-secondary" id="doneStatsBtn">查看学习统计</button>
       <button class="btn done-cta-text" id="doneHomeBtn">返回首页</button>
+    </div>
+  </div>
+
+  <!-- 提前复习数量选择弹层（v1.23.8）：复用 .option / .btn 视觉语言，
+       与现有 importModal / tokenModal 同一浮层交互约定。 -->
+  <div id="earlyPicker" class="picker-overlay hidden">
+    <div class="picker-box">
+      <div class="picker-title">提前复习</div>
+      <div class="picker-hint" id="earlyPickerHint"></div>
+      <div class="picker-options">
+        <button class="option option-full" data-early-n="10">10 个</button>
+        <button class="option option-full" data-early-n="20">20 个</button>
+        <button class="option option-full" data-early-n="30">30 个</button>
+        <button class="option option-full" data-early-n="50">50 个</button>
+      </div>
+      <div class="picker-custom">
+        <input type="number" id="earlyCustomInput" class="picker-input" min="1" step="1" placeholder="自定义">
+        <button class="btn btn-primary" id="earlyCustomOk">开始</button>
+      </div>
+      <div class="picker-err hidden" id="earlyPickerErr"></div>
+      <button class="btn btn-plain" id="earlyCancelBtn">取消</button>
     </div>
   </div>
 
@@ -1034,7 +1104,7 @@
 
 <footer>
   <div>纯本地运行 · 数据只保存在你的浏览器中 · 记得定期「导出进度」</div>
-  <div>v1.23.7</div>
+  <div>v1.23.8</div>
 </footer>
 
 <!-- 数据来源：knowledge-studio 母数据产物（由 tools/build_web_data.py 生成）；旧 knowledge.js 保留不引用 -->

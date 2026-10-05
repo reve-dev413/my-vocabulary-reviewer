@@ -297,6 +297,28 @@ function getDueList() {
   return due;
 }
 
+// ---------- 3.2 提前复习候选（v1.23.8 新增） ----------
+// 概念隔离：getDueList() = 「现在到期该复习的」；getFutureList() = 「还没到期、但已排了未来复习日的」。
+// ★ 只读筛选，不写 state、不改 PDM、不影响正常 due 队列。
+// 判据（四条同时满足）：① 有 state ② nextReview 是数字 ③ nextReview > now ④ 非未学新词
+//   ① 天然排除未学新词（!st）；② 天然排除 nextReview 缺失/为 0（新卡的 0 不是有效未来时间）
+//   ③ 天然排除已到期（那些归 getDueList）；排序：nextReview 从近到远（最快要到期的优先）。
+function getFutureList() {
+  const now = Date.now();
+  const future = [];
+  for (const topic of KNOWLEDGE) {
+    for (const item of topic.items) {
+      const st = state[item.id];
+      if (!st) continue;                                           // 未学新词：不进入
+      if (typeof st.nextReview !== "number") continue;             // nextReview 缺失：不进入
+      if (!(st.nextReview > now)) continue;                        // 已到期：归正常复习，不进入
+      future.push({ topic, item, st });
+    }
+  }
+  future.sort((a, b) => a.st.nextReview - b.st.nextReview);         // 从近到远
+  return future;
+}
+
 function buildReviewQueue(source) {
   const due = source || getDueList();
   if (due.length === 0) return [];
@@ -342,6 +364,9 @@ function renderRich(text) {
 
 let queue = [];
 let queueIndex = 0;
+// sessionMode（v1.23.8）：本轮会话来源 —— "normal"（到期/新词）| "early"（提前复习）。
+// ★ 仅用于完成屏文案与入口显隐；不参与 PDM、不参与队列构建、不影响任何既有分支。
+let sessionMode = "normal";
 // grades：本轮四档评价计数（完成屏回顾卡用，仅内存、不持久化）；
 // startTime：本轮开始时间（完成屏「本轮用时」）。
 let sessionStats = { done: 0, skipped: 0, grades: { "忘记": 0, "困难": 0, "记得": 0, "简单": 0 }, startTime: 0 };
@@ -432,8 +457,36 @@ function refreshReadyView() {
   updateBackBtn();
 }
 
+// ---------- 3.3 提前复习（v1.23.8 新增） ----------
+// 语义：用户主动从「尚未到期、已排未来复习日」的词里取出指定数量，提前做一次真实记忆测试。
+// ★ 不新增算法：四档评价仍走 gradeCurrent() → applyReview() → saveState()（与正常复习同一条链路）。
+// ★ 不新增数据结构：仍只写 localStorage["reviewer-state-v1"]，history 仍为 {time, grade}。
+// ★ 不碰正常复习：startSession / startNewWordsSession / buildReviewQueue / getDueList 一行未改。
+//
+// ★★ 为什么不调用 buildReviewQueue()（隔离关键）：
+//    buildReviewQueue 为正常复习服务，带「同一主题两轮轮转、每主题每轮最多 1 张」的收敛规则，
+//    对「同一主题多张」的输入会丢卡（实测：单主题 20 张 → 只剩 2 张）。
+//    因此提前复习必须直接使用已选定的候选集合，一张不丢 —— 这正是「选哪些词」与「哪些词到期」
+//    两个概念的隔离点。此处不改 buildReviewQueue，只在提前复习路径上绕开它。
+function startEarlySession(n) {
+  const cand = getFutureList();
+  if (cand.length === 0) {
+    showNotice("当前没有可提前复习的词。");
+    return;                                     // 不进入空会话
+  }
+  const take = Math.min(n, cand.length);        // 候选不足时取实际数量
+  queue = cand.slice(0, take);                  // ★ 直接用候选集合，不经 buildReviewQueue，一张不丢
+  sessionMode = "early";
+  beginSession();
+  if (take < n) {
+    // 明确告知实际数量（beginSession 已切视图，提示条不遮挡答题卡）
+    showNotice("当前只有 " + take + " 个词可提前复习，已全部加入本轮。");
+  }
+}
+
 function startSession() {
   queue = buildReviewQueue();
+  sessionMode = "normal";
   beginSession();
 }
 
@@ -789,11 +842,21 @@ function applyDoneCtaWeights() {
     contBtn.classList.toggle("done-cta-primary", hasDue);
     contBtn.classList.toggle("done-cta-secondary", !hasDue);
   }
+
+  // 提前复习（v1.23.8）：当本屏没有任何主 CTA（既无到期卡也无新词，常见于 idle 态）时，
+  // 「提前复习」提升为主按钮，作为此刻唯一可推进学习的出口；否则保持次级。
+  const earlyBtn = document.getElementById("doneEarlyBtn");
+  if (earlyBtn) {
+    const hasEarly = !earlyBtn.classList.contains("hidden");
+    const noPrimary = !hasDue && !hasNew;
+    earlyBtn.classList.toggle("done-cta-primary", hasEarly && noPrimary);
+    earlyBtn.classList.toggle("done-cta-secondary", hasEarly && !noPrimary);
+  }
 }
 
 function renderDoneSession() {
   const el = (id) => document.getElementById(id);
-  renderDoneCommon("本轮复习完成！");
+  renderDoneCommon(sessionMode === "early" ? "提前复习完成！" : "本轮复习完成！");
 
   // 本轮回顾卡：项数 / 用时 / 四档分布
   el("doneRecap").classList.remove("hidden");
@@ -834,6 +897,15 @@ function renderDoneSession() {
   const contBtn = el("doneContinueBtn");
   if (contBtn) contBtn.classList.toggle("hidden", dueLeft === 0);
 
+  // 提前复习入口（v1.23.8）：有未来待复习词时可见；点击展开数量选择。
+  // 判定只读 getFutureList()（新增的只读筛选），不新增到期计算、不碰正常队列。
+  const earlyBtn = el("doneEarlyBtn");
+  if (earlyBtn) {
+    const futureCount = getFutureList().length;
+    earlyBtn.classList.toggle("hidden", futureCount === 0);
+    earlyBtn.textContent = futureCount > 0 ? "提前复习（" + futureCount + " 个可提前）" : "提前复习";
+  }
+
   applyDoneCtaWeights();
 }
 
@@ -846,6 +918,13 @@ function renderDoneIdle() {
   el("doneNote").classList.add("hidden");
   el("doneNewBtn").classList.add("hidden");
   el("doneContinueBtn").classList.add("hidden");
+  // 提前复习入口：idle 态（无待复习）同样可用 —— 有未来词就显示
+  const earlyBtn = el("doneEarlyBtn");
+  if (earlyBtn) {
+    const futureCount = getFutureList().length;
+    earlyBtn.classList.toggle("hidden", futureCount === 0);
+    earlyBtn.textContent = futureCount > 0 ? "提前复习（" + futureCount + " 个可提前）" : "提前复习";
+  }
   applyDoneCtaWeights();
 }
 
@@ -1138,6 +1217,70 @@ function renderStats() {
   setText("stPdmDays", s.hasData ? s.accumulatedDays + " 天" : "0 天");
 }
 
+// ---------- 5.6 提前复习数量选择（v1.23.8） ----------
+// 复用现有 .option / .btn 视觉语言，不新增卡片式设计、不改答题界面。
+// 快捷数量 10/20/30/50 定义在 index.html 的 .option[data-early-n] 上（按钮即数据源）。
+// ★ 数字只表示「本次处理多少个词」，不是 PDM 参数，不进入任何记忆计算。
+function openEarlyPicker() {
+  const box = document.getElementById("earlyPicker");
+  if (!box) return;
+  const total = getFutureList().length;
+  if (total === 0) {
+    showNotice("当前没有可提前复习的词。");
+    return;
+  }
+  // 数量按钮：超过可选总数的快捷量置灰不可用（不制造不存在的词）
+  box.querySelectorAll(".option[data-early-n]").forEach((btn) => {
+    const n = parseInt(btn.dataset.earlyN, 10);
+    const usable = n <= total;
+    btn.disabled = !usable;
+    btn.classList.toggle("is-disabled", !usable);
+  });
+  const custom = document.getElementById("earlyCustomInput");
+  if (custom) {
+    custom.value = "";
+    custom.max = String(total);
+    custom.placeholder = "自定义（1–" + total + "）";
+  }
+  const hint = document.getElementById("earlyPickerHint");
+  if (hint) hint.textContent = "当前可提前复习 " + total + " 个词（尚未到期、已排未来复习日）";
+  const err = document.getElementById("earlyPickerErr");
+  if (err) err.classList.add("hidden");
+  box.classList.remove("hidden");
+  document.body.classList.add("picker-open");
+}
+
+function closeEarlyPicker() {
+  const box = document.getElementById("earlyPicker");
+  if (box) box.classList.add("hidden");
+  document.body.classList.remove("picker-open");
+}
+
+function isEarlyPickerOpen() {
+  const box = document.getElementById("earlyPicker");
+  return !!box && !box.classList.contains("hidden");
+}
+
+// 确认数量 → 启动提前复习。非法输入就地报错，不进入空会话。
+function confirmEarlyCount(n) {
+  const total = getFutureList().length;
+  const err = document.getElementById("earlyPickerErr");
+  const num = Number(n);
+  if (!isFinite(num) || Math.floor(num) !== num || num < 1) {
+    if (err) { err.textContent = "请输入 1 到 " + total + " 之间的整数。"; err.classList.remove("hidden"); }
+    return;
+  }
+  if (num > total) {
+    // 超过可提前总数：按实际可用的最大值处理（不制造不存在的词）
+    if (err) { err.textContent = "最多可提前复习 " + total + " 个，已按 " + total + " 个开始。"; err.classList.remove("hidden"); }
+    closeEarlyPicker();
+    startEarlySession(total);
+    return;
+  }
+  closeEarlyPicker();
+  startEarlySession(num);
+}
+
 // ---------- 6. 事件绑定与启动 ----------
 
 // ===== 顶栏「更多」收纳菜单（v1.19.0） =====
@@ -1175,6 +1318,10 @@ document.addEventListener("click", function (e) {
 document.addEventListener("keydown", function (e) {
   if ((e.key === "Escape" || e.key === "Esc") && isMoreMenuOpen()) setMoreMenu(false);
 });
+// 数量选择弹层：Esc 关闭（与「更多」菜单同一交互约定）
+document.addEventListener("keydown", function (e) {
+  if ((e.key === "Escape" || e.key === "Esc") && isEarlyPickerOpen()) closeEarlyPicker();
+});
 
 document.getElementById("startBtn").addEventListener("click", startSession);
 // 掌握度环形图：扇区 / 图例悬浮高亮（绑定一次即可，扇区是固定 DOM，只换 d 属性）
@@ -1189,6 +1336,19 @@ document.getElementById("doneNewBtn").addEventListener("click", startNewWordsSes
 // 队列为空时 beginSession() 内部走 renderDoneIdle()，不会产生空 session）。
 document.getElementById("doneContinueBtn").addEventListener("click", startSession);
 document.getElementById("doneHomeBtn").addEventListener("click", refreshReadyView);
+// 提前复习（v1.23.8）：入口 → 数量选择弹层 → startEarlySession(n)
+document.getElementById("doneEarlyBtn").addEventListener("click", openEarlyPicker);
+document.querySelectorAll(".option[data-early-n]").forEach((btn) => {
+  btn.addEventListener("click", () => confirmEarlyCount(parseInt(btn.dataset.earlyN, 10)));
+});
+document.getElementById("earlyCustomOk").addEventListener("click", () => {
+  const input = document.getElementById("earlyCustomInput");
+  confirmEarlyCount(input ? input.value : "");
+});
+document.getElementById("earlyCustomInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); confirmEarlyCount(e.target.value); }
+});
+document.getElementById("earlyCancelBtn").addEventListener("click", closeEarlyPicker);
 document.getElementById("judgeLeftBtn").addEventListener("click", () => judgeChoose(0));
 document.getElementById("judgeRightBtn").addEventListener("click", () => judgeChoose(1));
 document.getElementById("judgeNextBtn").addEventListener("click", judgeNext);
