@@ -500,7 +500,7 @@
     .answer { font-size: 17px; }
   }
 
-  /* ===== 移动端纵向布局优化（2026-10-05 / v1.23.4，v1.23.5 微调回忆态定位）=====
+  /* ===== 移动端纵向布局优化（2026-10-05 / v1.23.4，v1.23.5 微调回忆态定位，v1.23.7 补完成屏）=====
      只动布局与点击热区，不改视觉风格 / 答题逻辑 / PDM / 队列 / 数据结构 / 同步：
      - 复习中 footer 退出主布局，卡片适度加高（min(66dvh,600px)）→ 消除卡外黑色空白
      - 卡头（第 X/X 项 / 题型 / 关键词）贴卡片顶部，题目区在剩余空间垂直居中
@@ -508,6 +508,7 @@
      - 按钮条整条贴卡片底边（内容 48 + 底部留白 40）→ 选项竖线贯穿到底、文字垂直居中
      - 「开始复习 / 点击查看答案」热区铺满整张卡片，不溢出卡片边界
      - v1.23.5：回忆态改为「视觉重心偏上」——题目落卡片中部偏上，提示贴卡片底部
+     - v1.23.7：完成屏（idle / session）卡片同样加高至 min(66dvh,600px)、footer 退出布局
      全部圈在手机断点内，PC 端零改动 */
   @media (max-width: 600px) {
     /* —— 开始界面：与答题界面同尺寸 / 边距 / 按钮位 —— */
@@ -517,6 +518,13 @@
       height: 88px;
       border-radius: 0 0 13px 13px;   /* 贴合卡片内圆角（14px - 1px border），避免直角撑破卡片底角 */
     }
+
+    /* —— 完成屏（本轮完成 / 今日无待复习）：与答题界面同尺寸 ——
+       完成屏既无 .reviewing、#readyView 也非未隐藏 → 上面两条规则都覆盖不到它，
+       卡片会停在 .card 默认 min-height:320px，卡外留一大片空白。
+       用 :has 精准圈定 #doneView，不波及其他界面。 */
+    body:has(#doneView:not(.hidden)) .card { min-height: min(66dvh, 600px); }
+    body:has(#doneView:not(.hidden)) footer { display: none; }
 
     /* —— 复习态：footer 退出布局、卡片高度、内容分层居中 —— */
     body.reviewing footer { display: none; }
@@ -1026,7 +1034,7 @@
 
 <footer>
   <div>纯本地运行 · 数据只保存在你的浏览器中 · 记得定期「导出进度」</div>
-  <div>v1.23.6</div>
+  <div>v1.23.7</div>
 </footer>
 
 <!-- 数据来源：knowledge-studio 母数据产物（由 tools/build_web_data.py 生成）；旧 knowledge.js 保留不引用 -->
