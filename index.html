@@ -203,7 +203,11 @@
   }
   .topic-name { font-size: 14px; color: var(--sub-text); margin-bottom: 8px; }
   .prompt { font-size: 28px; font-weight: 600; line-height: 1.4; letter-spacing: -0.01em; margin: 12px 0 24px; word-break: break-word; }
+  /* 例句卡题干：英文长句两端对齐（消除居中产生的锯齿；仅 .sentence-card 生效，其他卡不受影响） */
+  .prompt.sentence-card { text-align: justify; text-justify: inter-word; font-weight: 500; }
   .prompt-in-answer { font-size: 13px; color: var(--faint-text); margin: 4px 0 2px; line-height: 1.6; word-break: break-word; }
+  /* 答案区题干预览：与题干侧保持同一种对齐方式（原本继承 .card 的 center，与题干 justify 不一致） */
+  .prompt-in-answer.sentence-card { text-align: justify; text-justify: inter-word; }
   .hl-red { color: var(--hl-red); font-weight: 600; }
   .answer {
     font-size: 17px;
@@ -558,10 +562,14 @@
        - 提示：margin-top:auto 吸走其余全部空白 → 紧贴卡片底部。
        - padding-bottom:0 抵消 #recallView 原有的 20px 底内边距，让提示真正落到底。 */
     body.reviewing #recallView .prompt { margin-top: calc((min(66dvh, 600px) - 50px) * 0.18); }
+    /* 例句卡视觉重心更偏上：长英文按 18% 会几乎贴住底部提示语（实测只剩 24px），改为 6%（实测 65px） */
+    body.reviewing #recallView .prompt.sentence-card { margin-top: calc((min(66dvh, 600px) - 50px) * 0.06); }
     body.reviewing #recallView .recall-hint { margin-top: auto; margin-bottom: 0; }
 
     /* 评价态：题目区首 / 末可见元素各吸收一段等量空白（尾部元素按实际择一，避免多个 auto 均分） */
-    body.reviewing #gradeView:has(#promptInAnswer:not(.hidden)) #promptInAnswer { margin-top: auto; }
+    /* 答案态：上方固定 28px（原为 auto）。原写法与下方 auto 均分空白 → 内容整体下沉
+       （实测卡片顶部空 165px、底部仅 67px）。改固定值后内容上移，底部留白 105px。 */
+    body.reviewing #gradeView:has(#promptInAnswer:not(.hidden)) #promptInAnswer { margin-top: 28px; }
     body.reviewing #gradeView:not(:has(#promptInAnswer:not(.hidden))) #answerText { margin-top: auto; }
     body.reviewing #gradeView:has(#relatedBox:not(.hidden)) #relatedBox { margin-bottom: auto; }
     body.reviewing #gradeView:not(:has(#relatedBox:not(.hidden))):has(#materialsBox:not(.hidden)) #materialsBox { margin-bottom: auto; }

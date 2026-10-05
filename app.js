@@ -360,6 +360,16 @@ function renderRich(text) {
   return esc.replace(/\*\*(.+?)\*\*/g, '<span class="hl-red">$1</span>');
 }
 
+// 题干专用渲染：与 renderRich 相同，额外把换行转成 <br>。
+// 例句卡 prompt 形如「<英文原句>\n\n请回忆这句话的意思。」，需保留换行（renderRich 会被 HTML 折叠）。
+// 仅题干（回忆态 prompt / 答案区题干预览 / 判断题题干）走这里；answer、materials、topic.name 仍走 renderRich。
+function renderPrompt(text) {
+  if (!text) return "";
+  const esc = String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return esc.replace(/\*\*(.+?)\*\*/g, '<span class="hl-red">$1</span>')
+            .replace(/\n/g, "<br>");
+}
+
 // ---------- 4. 复习流程 ----------
 
 let queue = [];
@@ -533,7 +543,9 @@ function showNext() {
   el("progressText").textContent = `第 ${queueIndex + 1} / ${queue.length} 项`;
   el("typeTag").textContent = d.item.type;
   el("topicName").innerHTML = renderRich(d.topic.name);
-  el("promptText").innerHTML = renderRich(d.item.prompt);
+  el("promptText").innerHTML = renderPrompt(d.item.prompt);
+  // 例句卡标记类：驱动两端对齐 + 更偏上的视觉重心（见 index.html .prompt.sentence-card）
+  el("promptText").classList.toggle("sentence-card", d.item.type === "例句");
 
   el("recallView").classList.remove("hidden");
   el("gradeView").classList.add("hidden");
@@ -550,7 +562,8 @@ function showAnswerContent(d) {
   // 答案页顶部显示题干（灰色小字）；直接卡题干即内容本身，不重复显示
   const pia = el("promptInAnswer");
   if (d.item.prompt && d.item.answer) {
-    pia.innerHTML = renderRich(d.item.prompt);
+    pia.innerHTML = renderPrompt(d.item.prompt);
+    pia.classList.toggle("sentence-card", d.item.type === "例句");
     pia.classList.remove("hidden");
   } else {
     pia.classList.add("hidden");
@@ -641,7 +654,7 @@ function showJudge() {
   el("judgeProgress").textContent = `第 ${queueIndex + 1} / ${queue.length} 项`;
   el("judgeType").textContent = d.item.type;
   el("judgeTopic").innerHTML = renderRich(d.topic.name);
-  el("judgePrompt").innerHTML = renderRich(d.item.prompt);
+  el("judgePrompt").innerHTML = renderPrompt(d.item.prompt);
   el("judgeResult").className = "";
   el("judgeAnswerBox").classList.add("hidden");
   el("judgeNextBtn").classList.add("hidden");
