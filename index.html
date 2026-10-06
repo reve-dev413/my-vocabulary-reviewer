@@ -203,11 +203,12 @@
   }
   .topic-name { font-size: 14px; color: var(--sub-text); margin-bottom: 8px; }
   .prompt { font-size: 28px; font-weight: 600; line-height: 1.4; letter-spacing: -0.01em; margin: 12px 0 24px; word-break: break-word; }
-  /* 例句卡题干：英文长句两端对齐（消除居中产生的锯齿；仅 .sentence-card 生效，其他卡不受影响） */
-  .prompt.sentence-card { text-align: justify; text-justify: inter-word; font-weight: 500; }
+  /* 例句卡题干：居中对齐（原两端对齐，2026-10-06 用户改口为居中；仅 .sentence-card 生效，其他卡不受影响） */
+  .prompt.sentence-card { text-align: center; font-weight: 500; }
   .prompt-in-answer { font-size: 13px; color: var(--faint-text); margin: 4px 0 2px; line-height: 1.6; word-break: break-word; }
-  /* 答案区题干预览：与题干侧保持同一种对齐方式（原本继承 .card 的 center，与题干 justify 不一致） */
-  .prompt-in-answer.sentence-card { text-align: justify; text-justify: inter-word; }
+  /* 答案区题干预览：与题干侧同一种对齐方式（居中）
+     ★ 中文译文 .answer 保持原格式（left）——用户 2026-10-06 明确「答案按照原格式，灰字句子居中」 */
+  .prompt-in-answer.sentence-card { text-align: center; }
   .hl-red { color: var(--hl-red); font-weight: 600; }
   .answer {
     font-size: 17px;
