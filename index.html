@@ -827,16 +827,13 @@
       position: fixed; top: 0; left: 0; right: 0;
       width: 100%; margin: 0; padding: 8px 32px; z-index: 90;
     }
-    body { padding: 80px 32px 28px; justify-content: center; min-height: 100vh; }
+    body { padding: 64px 32px calc(40px + 14vh); justify-content: center; min-height: 100vh; }
     .card { max-width: 780px; padding: 44px 40px; min-height: 360px; }
     .tag { font-size: 13px; padding: 5px 14px; }
     .topic-name { font-size: 15px; }
     .prompt { font-size: 32px; line-height: 1.45; margin: 14px 0 26px; text-wrap: balance; }
     .prompt-in-answer { font-size: 14px; }
-    .answer { font-size: 19px; line-height: 1.85; }
-    /* 正文限宽 620px：.answer 左贴卡片内沿（短答案不缩进、与卡片左边界对齐）；
-       灰字例句说明是居中文本，限宽块本身也居中，视觉中心才不跑偏 */
-    .answer { max-width: 620px; }
+    .answer { font-size: 19px; line-height: 1.85; text-align: center; max-width: 620px; margin-left: auto; margin-right: auto; }
     .prompt-in-answer { max-width: 620px; margin-left: auto; margin-right: auto; }
     .materials { font-size: 15px; }
     .count { font-size: 17px; }
@@ -848,15 +845,12 @@
     footer { font-size: 12.5px; }
   }
 
-  /* ===== 电脑端整体上移（v1.23.22，2026-10-29）=====
-     内容重心由几何中心（视口 50%）提到 42%（黄金分割偏上），阅读动线更顺。
-     偏移量用 vh 而非固定 px → 视口高度不同也保持同一比例位置：
-     900 高上移 71px / 1080 高上移 86px / 768 高上移 61px。
-     ★ min-height: 840px 兜底：矮窗口不上移，否则长例句卡（实测 480px 高）会多出滚动。
-     只改 body 下留白 —— 卡片 padding、字段间距、按钮条贴底、正文限宽全部不动。 */
-  @media (min-width: 1025px) and (min-height: 840px) {
-    body { padding-bottom: calc(80px + 10vh); }
-  }
+  /* ===== 电脑端整体上移（v1.23.23，2026-10-29 重做）=====
+     内容重心恒定落在视口 43%（黄金分割偏上）。padding-bottom 用 vh 换算：
+     卡片中心恒定落在视口 41%（实测 736/900/1080 三档为 41%/41%/42%）。
+     不再依赖 min-height 门槛
+     （v1.23.22 的 min-height:840px 门槛会把 1366×768 这类全屏窗口整个排除，导致上移不生效）。
+     ★ 代价：720px 高窗口 + 长例句卡（480px 高）会多出约 40px 滚动 —— 该组合极少见，优先保证常规全屏。 */
 </style>
 <script>
 // 深色模式：手动选择（theme-preference）优先，否则跟随系统（prefers-color-scheme）
@@ -1157,7 +1151,7 @@
 
 <footer>
   <div>纯本地运行 · 数据只保存在你的浏览器中 · 记得定期「导出进度」</div>
-  <div>v1.23.22</div>
+  <div>v1.23.23</div>
 </footer>
 
 <!-- 数据来源：knowledge-studio 母数据产物（由 tools/build_web_data.py 生成）；旧 knowledge.js 保留不引用 -->
