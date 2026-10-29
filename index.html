@@ -828,7 +828,9 @@
       width: 100%; margin: 0; padding: 8px 32px; z-index: 90;
     }
     body { padding: 64px 32px calc(30px + 14vh); justify-content: center; min-height: 100vh; }
-    .card { max-width: 780px; padding: 44px 40px; min-height: 360px; }
+    /* 基准高度 400px：让提问态 / 答案态 / 判断题 / 就绪页四种界面同高，切卡与展开答案都不跳动。
+       覆盖 763 张卡里 99.6%（答案 ≤60 字的占 98.6%）；仅极少数长答案卡被内容撑高到 406~480，压不下去。 */
+    .card { max-width: 780px; padding: 44px 40px; min-height: 400px; }
     .tag { font-size: 13px; padding: 5px 14px; }
     .topic-name { font-size: 15px; }
     .prompt { font-size: 32px; line-height: 1.45; margin: 14px 0 26px; text-wrap: balance; }
@@ -1151,7 +1153,7 @@
 
 <footer>
   <div>纯本地运行 · 数据只保存在你的浏览器中 · 记得定期「导出进度」</div>
-  <div>v1.23.24</div>
+  <div>v1.23.25</div>
 </footer>
 
 <!-- 数据来源：knowledge-studio 母数据产物（由 tools/build_web_data.py 生成）；旧 knowledge.js 保留不引用 -->
