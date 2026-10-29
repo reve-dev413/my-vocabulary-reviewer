@@ -1397,6 +1397,33 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+// 数字键 1–4 = 四档评价（1 忘记 / 2 困难 / 3 记得 / 4 简单），电脑端键盘操作用。
+// 生效条件：答案页可见（gradeView 未隐藏）+ 无浮层打开 + 上一个滑动动画未结束。
+// 走的是与鼠标点按钮完全相同的 gradeCurrent() 链路，PDM / 记录格式零改动。
+const GRADE_KEYMAP = { "1": "忘记", "2": "困难", "3": "记得", "4": "简单" };
+function keyLayerBlocked() {
+  if (animating) return true;
+  const overlays = ["statsView", "importModal", "tokenModal", "earlyPicker", "moreMenu"];
+  for (let i = 0; i < overlays.length; i++) {
+    const node = document.getElementById(overlays[i]);
+    if (node && !node.classList.contains("hidden")) return true;   // 浮层在手，数字键不抢评价
+  }
+  return false;
+}
+document.addEventListener("keydown", (e) => {
+  if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;       // 排除 Ctrl+1 切标签等组合键
+  const grade = GRADE_KEYMAP[e.key];
+  if (!grade) return;
+  const t = e.target;
+  const tag = t && t.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || (t && t.isContentEditable)) return; // 输入中不劫持数字
+  const gradeView = document.getElementById("gradeView");
+  if (!gradeView || gradeView.classList.contains("hidden")) return;  // 只在评分页生效
+  if (keyLayerBlocked()) return;
+  e.preventDefault();
+  gradeCurrent(grade);
+});
+
 // 启动：有待复习 → 准备页；无待复习 → 完成屏平静态
 if (getDueList().length === 0) {
   renderDoneIdle();
