@@ -834,7 +834,10 @@
     .prompt { font-size: 32px; line-height: 1.45; margin: 14px 0 26px; text-wrap: balance; }
     .prompt-in-answer { font-size: 14px; }
     .answer { font-size: 19px; line-height: 1.85; }
-    .answer, .prompt-in-answer { max-width: 620px; margin-left: auto; margin-right: auto; }
+    /* 正文限宽 620px：.answer 左贴卡片内沿（短答案不缩进、与卡片左边界对齐）；
+       灰字例句说明是居中文本，限宽块本身也居中，视觉中心才不跑偏 */
+    .answer { max-width: 620px; }
+    .prompt-in-answer { max-width: 620px; margin-left: auto; margin-right: auto; }
     .materials { font-size: 15px; }
     .count { font-size: 17px; }
     .done-title { font-size: 22px; }
@@ -1144,7 +1147,7 @@
 
 <footer>
   <div>纯本地运行 · 数据只保存在你的浏览器中 · 记得定期「导出进度」</div>
-  <div>v1.23.20</div>
+  <div>v1.23.21</div>
 </footer>
 
 <!-- 数据来源：knowledge-studio 母数据产物（由 tools/build_web_data.py 生成）；旧 knowledge.js 保留不引用 -->
