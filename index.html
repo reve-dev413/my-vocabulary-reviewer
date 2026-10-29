@@ -813,6 +813,37 @@
   }
   .bcol .blabel.hide { visibility: hidden; }
   .chart-summary { font-size: 12px; color: var(--sub-text); margin-top: 10px; }
+
+  /* ===== 电脑端排版（v1.23.20，2026-10-29）：仅鼠标大屏生效 =====
+     圈定条件 min-width:1025px —— 手机（≤600px）与平板（601–1024px）两段断点一个字节不动。
+     改三件事：
+       ① 卡片 640 → 780px，并垂直居中（原来死贴左上角，1440×900 下卡片底只到 y≈300，下方 600px 全空）；
+       ② 字号整体上调一档（题干 28→32、答案 17→19、关键词 14→15、例句灰字 13→14、材料 14→15、按钮 16–17）；
+       ③ 正文块限宽 620px —— 780px 卡片里一行能排 70+ 字，眼睛回行困难；块内仍左对齐、整块居中。
+     header 由 static 改 fixed（贴顶，主内容才谈得上居中），z-index 取 90：
+     低于统计视图 150 / 更新提示 200 / 遮罩 100，保证浮层打开时顶栏不会浮在上面。 */
+  @media (min-width: 1025px) {
+    header {
+      position: fixed; top: 0; left: 0; right: 0;
+      width: 100%; margin: 0; padding: 8px 32px; z-index: 90;
+    }
+    body { padding: 80px 32px 28px; justify-content: center; min-height: 100vh; }
+    .card { max-width: 780px; padding: 44px 40px; min-height: 360px; }
+    .tag { font-size: 13px; padding: 5px 14px; }
+    .topic-name { font-size: 15px; }
+    .prompt { font-size: 32px; line-height: 1.45; margin: 14px 0 26px; text-wrap: balance; }
+    .prompt-in-answer { font-size: 14px; }
+    .answer { font-size: 19px; line-height: 1.85; }
+    .answer, .prompt-in-answer { max-width: 620px; margin-left: auto; margin-right: auto; }
+    .materials { font-size: 15px; }
+    .count { font-size: 17px; }
+    .done-title { font-size: 22px; }
+    .done-sub, .done-next, .done-note { font-size: 14px; }
+    .option { font-size: 16px; }
+    .option-full { font-size: 17px; }
+    .btn { font-size: 17px; }
+    footer { font-size: 12.5px; }
+  }
 </style>
 <script>
 // 深色模式：手动选择（theme-preference）优先，否则跟随系统（prefers-color-scheme）
@@ -1113,7 +1144,7 @@
 
 <footer>
   <div>纯本地运行 · 数据只保存在你的浏览器中 · 记得定期「导出进度」</div>
-  <div>v1.23.19</div>
+  <div>v1.23.20</div>
 </footer>
 
 <!-- 数据来源：knowledge-studio 母数据产物（由 tools/build_web_data.py 生成）；旧 knowledge.js 保留不引用 -->
