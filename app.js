@@ -370,6 +370,33 @@ function renderPrompt(text) {
             .replace(/\n/g, "<br>");
 }
 
+// ---------- 3.6 主题名（灰字）显示判定（v1.23.28） ----------
+// 背景：题干改为「直接给原文、不写问句」后（2026-11-01 用户明确），
+//   topic.name 在两种情况下变成纯噪音：
+//   ① 与题干重复（英译中卡题干就是词条本身）；
+//   ② 中译英卡的英文名就是答案（灰字直接泄题）。
+// 判定为"无信息量"时整行隐藏；中文名（如整句卡的主题标签）照常显示。
+function shouldHideTopicName(d) {
+  const raw = d && d.topic && d.topic.name ? String(d.topic.name) : "";
+  const name = raw.trim();
+  if (!name) return true;
+  const norm = (s) => String(s == null ? "" : s).replace(/\*\*/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+  const n = norm(name);
+  const prompt = norm(d.item && d.item.prompt);
+  // ① 题干与灰字完全相同（新格式：题干直接给词条）→ 纯重复
+  //    注意用「相等」不用「包含」：历史卡题干是「X 是什么意思？」，包含但不相等，
+  //    这类卡的灰字仍有排版作用，一律保持原样（v1.23.27 及以前的视觉不变）。
+  if (prompt && prompt === n) return true;
+  // ② 中译英：名字是英文且每一段都能在答案里找到 → 泄题
+  if (d.item && d.item.direction === "zh2en") {
+    if (!/[a-z]/.test(n)) return false;
+    const ans = norm(d.item.answer);
+    const parts = n.split("/").map((s) => s.trim()).filter(Boolean);
+    if (parts.length && parts.every((p) => ans.indexOf(p) !== -1)) return true;
+  }
+  return false;
+}
+
 // ---------- 4. 复习流程 ----------
 
 let queue = [];
@@ -542,7 +569,11 @@ function showNext() {
   }
   el("progressText").textContent = `第 ${queueIndex + 1} / ${queue.length} 项`;
   el("typeTag").textContent = d.item.type;
-  el("topicName").innerHTML = renderRich(d.topic.name);
+  // v1.23.28：灰字与题干重复 / 中译英卡泄题时隐藏（见 shouldHideTopicName）
+  const hideTopicName = shouldHideTopicName(d);
+  const topicNameEl = el("topicName");
+  topicNameEl.innerHTML = hideTopicName ? "" : renderRich(d.topic.name);
+  topicNameEl.classList.toggle("hidden", hideTopicName);
   el("promptText").innerHTML = renderPrompt(d.item.prompt);
   // 例句卡标记类：驱动两端对齐 + 更偏上的视觉重心（见 index.html .prompt.sentence-card）
   el("promptText").classList.toggle("sentence-card", d.item.type === "例句");
@@ -558,7 +589,11 @@ function showAnswerContent(d) {
   const el = (id) => document.getElementById(id);
   el("progressText2").textContent = `第 ${queueIndex + 1} / ${queue.length} 项`;
   el("typeTag2").textContent = d.item.type;
-  el("topicName2").innerHTML = renderRich(d.topic.name);
+  // v1.23.28：答案页同规则（答案揭晓后英文名仍与 answer 重复，同样隐藏）
+  const hideTopicName2 = shouldHideTopicName(d);
+  const topicNameEl2 = el("topicName2");
+  topicNameEl2.innerHTML = hideTopicName2 ? "" : renderRich(d.topic.name);
+  topicNameEl2.classList.toggle("hidden", hideTopicName2);
   // 答案页顶部显示题干（灰色小字）；直接卡题干即内容本身，不重复显示
   const pia = el("promptInAnswer");
   if (d.item.prompt && d.item.answer) {
