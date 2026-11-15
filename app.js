@@ -125,7 +125,11 @@ const PDM_CONFIG = {
   damping: 0.15,             // 难度对增长率的阻尼系数
   dDelta: { "忘记": 0.08, "困难": 0.03, "记得": 0, "简单": -0.02 }, // 首次复习难度增量
   lapseDBase: 0.02,          // 后续忘记的难度基础增量
-  lapseDSurprise: 0.08       // 后续忘记的"意外程度"权重（×R）
+  lapseDSurprise: 0.08,      // 后续忘记的"意外程度"权重（×R）
+  // ---- v1.24 新增（2026-11-15，全部基于真实复习数据校准，详见 DESIGN-MEMORY-ALGORITHM.md §17）----
+  minGain: 1.02,             // 非忘记档的稳定性最小增长率：杜绝"D 偏高时点困难反而倒退"
+  dRegress: 0.03,            // 难度向初值 dInit 回归的权重（每次复习）：防止 D 单向漂移
+  fuzz: 0.06                 // 下次间隔抖动幅度（±6%）：打散"同一天学的卡永远同一天到期"
 };
 
 // 目标间隔系数 k = log2(1/p)，由 targetRetention 推导（p=0.85 → ≈0.2345），非独立参数
@@ -237,7 +241,13 @@ function ensureState(itemId) {
 //   ④ D：忘记 +0.02 + 0.08×R（R 越高 = 越出乎模型预期的遗忘 → 难度加得越多）；
 //      困难 +0.03；记得 0；简单 -0.02
 //   ⑤ 下次间隔：忘记 → clamp(S×λ×k, 1天, 2天)（24~48h 恢复）；其他 → max(S×λ×k, 12小时)
-function applyReview(st, grade, now) {
+// v1.24 修补（真实数据校准，2026-11-15）：
+//   ⑥ 间隔利用率折减：mult 改为 mult^g（g = 实际间隔/计划间隔，钳位 0~1）。
+//      到点或逾期复习 g=1 → 与原行为完全一致；提前复习按比例少涨 → 杜绝"刚见完就再来"也能把 S 推高。
+//   ⑦ 最小增益：非忘记档 S 至少 ×1.02 → 杜绝 D>0.667 时点"困难"反而让 S 萎缩的死锁。
+//   ⑧ 难度回归：每次复习 D 向 dInit 回归 3% → 杜绝 D 只涨不跌的长期漂移。
+//   ⑨ 间隔抖动：按对象固定种子 ±6% → 打散复习墙（数据：单日复习量峰值 520，中位 112）。
+function applyReview(st, grade, now, itemId) {
   const cfg = PDM_CONFIG;
 
   let S, D;
@@ -249,13 +259,28 @@ function applyReview(st, grade, now) {
     const elapsedDays = st.lastReview ? (now - st.lastReview) / MS_DAY : 0;
     const R = Math.pow(2, -elapsedDays / (st.stability * cfg.stabilityScale));
     const credit = 1 - R;
-    const mult = cfg.base[grade] + cfg.creditWeight[grade] * credit;
-    S = clamp(st.stability * mult * (1 - cfg.damping * st.difficulty), cfg.sMin, cfg.sMax);
+    let mult = cfg.base[grade] + cfg.creditWeight[grade] * credit;
+    // ⑥ 间隔利用率折减：只惩罚"明显提前"（实际间隔不足计划间隔的一半）。
+    //    r ≥ 0.5 → 不折减（mult 原样，与 v1.23 完全一致）；r < 0.5 → 按 r/0.5 平滑降到 0。
+    //    目的不是普遍压低 S，而是堵住"刚见完就点记得也能把 S 推高"的漏洞。
+    if (grade !== "忘记") {
+      const plannedDays = st.stability * K_INTERVAL * cfg.stabilityScale;
+      if (plannedDays > 0) {
+        const r = elapsedDays / plannedDays;
+        if (r < 0.5) mult = Math.pow(mult, Math.max(0, r) / 0.5);
+      }
+    }
+    S = st.stability * mult * (1 - cfg.damping * st.difficulty);
+    // ⑦ 最小增益
+    if (grade !== "忘记") S = Math.max(S, st.stability * cfg.minGain);
+    S = clamp(S, cfg.sMin, cfg.sMax);
     if (grade === "忘记") {
       D = clamp(st.difficulty + cfg.lapseDBase + cfg.lapseDSurprise * R, cfg.dMin, cfg.dMax);
     } else {
       D = clamp(st.difficulty + cfg.dDelta[grade], cfg.dMin, cfg.dMax);
     }
+    // ⑧ 难度向初值回归
+    D = clamp(D + cfg.dRegress * (cfg.dInit - D), cfg.dMin, cfg.dMax);
   }
 
   // 下次复习间隔（天）：k = log2(1/p)，再乘 λ（stabilityScale）
@@ -263,6 +288,13 @@ function applyReview(st, grade, now) {
   if (grade === "忘记") {
     intervalDays = clamp(intervalDays, cfg.lapseFloorDays, cfg.lapseCapDays);
   } else {
+    intervalDays = Math.max(intervalDays, cfg.minIntervalHours / 24);
+    // ⑨ 间隔抖动：种子由 item.id + 复习次数派生（不新增状态字段；同批次的卡也能被打散）
+    let h = 2166136261;
+    const seedSrc = String(itemId || "");
+    for (let i = 0; i < seedSrc.length; i++) { h ^= seedSrc.charCodeAt(i); h = Math.imul(h, 16777619); }
+    h = Math.imul((h ^ Math.imul(st.reviews, 2654435761)) >>> 0, 2246822519) >>> 0;
+    intervalDays *= 1 + ((h % 1000) / 1000 * 2 - 1) * cfg.fuzz;
     intervalDays = Math.max(intervalDays, cfg.minIntervalHours / 24);
   }
 
@@ -733,7 +765,7 @@ function gradeCurrent(grade) {
   };
   canGoBack = true;
   const st = ensureState(d.item.id);
-  applyReview(st, grade, Date.now());
+  applyReview(st, grade, Date.now(), d.item.id);
   saveState();
 
   sessionStats.done += 1;
