@@ -13,6 +13,105 @@
 // 因此 localStorage 中已有记忆状态（reviewer-state-v1，按 item.id 索引）可直接沿用。
 const KNOWLEDGE = (window.KS_DATA && window.KS_DATA.knowledge) || [];
 
+// ---------- 0.2 词书（v1.25.0）----------
+// 词书 = 顶层分类容器。每本词书持有一组 topic id；「当前词书」决定这一轮
+// 背哪些、复习哪些、统计哪些。
+// ★ 记忆状态仍按 item.id 存在同一个 reviewer-state-v1 里：item id 全局唯一，
+//   所以切换词书天然不会串数据，不必拆成多个存储键（PDM / 备份 / 云同步零改动）。
+// ★ 无 books 数据（旧数据产物）时退化为单一隐式词书，行为与 v1.24.0 完全一致。
+const BOOK_STORAGE_KEY = "reviewer-book-v1";
+const BOOKS_DATA = (window.KS_DATA && window.KS_DATA.books) || null;
+
+function buildBooks() {
+  const raw = BOOKS_DATA && Array.isArray(BOOKS_DATA.books) ? BOOKS_DATA.books : [];
+  const byTopic = {};
+  const list = [];
+  for (let i = 0; i < raw.length; i++) {
+    const b = raw[i] || {};
+    const ids = Array.isArray(b.topics) ? b.topics : [];
+    const book = {
+      id: b.id,
+      name: b.name || b.id,
+      short: b.short || b.name || b.id,
+      desc: b.desc || "",
+      order: typeof b.order === "number" ? b.order : i + 1,
+      topicIds: ids,
+      topicSet: new Set(ids),
+    };
+    for (let j = 0; j < ids.length; j++) byTopic[ids[j]] = book.id;
+    list.push(book);
+  }
+  list.sort((a, b) => a.order - b.order);
+  return { list: list, byTopic: byTopic };
+}
+
+const BOOKS = buildBooks();
+
+// 隐式词书：仅当数据产物里没有 books 时使用（= 旧库，等价于「全部考点」一本）
+const IMPLICIT_BOOK = {
+  id: "__all",
+  name: "全部考点",
+  short: "全部",
+  desc: "当前知识库未划分词书。",
+  order: 0,
+  topicIds: null,
+  topicSet: null,
+};
+
+function bookList() {
+  return BOOKS.list.length ? BOOKS.list : [IMPLICIT_BOOK];
+}
+
+function loadActiveBookId() {
+  let saved = "";
+  try { saved = localStorage.getItem(BOOK_STORAGE_KEY) || ""; } catch (e) { saved = ""; }
+  const all = bookList();
+  for (let i = 0; i < all.length; i++) if (all[i].id === saved) return saved;
+  const def = BOOKS_DATA && BOOKS_DATA.default;
+  for (let i = 0; i < all.length; i++) if (all[i].id === def) return def;
+  return all[0].id;
+}
+
+let activeBookId = loadActiveBookId();
+let ACTIVE_BOOK = null;
+// 当前词书下的 topic 列表：调度器 / 统计 / 计数一律只认它
+let ACTIVE_KNOWLEDGE = [];
+
+function resolveActiveBook() {
+  const all = bookList();
+  let found = all[0];
+  for (let i = 0; i < all.length; i++) if (all[i].id === activeBookId) found = all[i];
+  ACTIVE_BOOK = found;
+  activeBookId = found.id;
+  if (!BOOKS.list.length) { ACTIVE_KNOWLEDGE = KNOWLEDGE; return; }  // 旧库：不过滤
+  const set = found.topicSet;
+  ACTIVE_KNOWLEDGE = KNOWLEDGE.filter((t) => set.has(t.id));
+}
+resolveActiveBook();
+
+// 当前词书的规模与进度（用于顶部细条 / 词书列表）
+function bookProgress(book, now) {
+  const ts = now || Date.now();
+  const set = book.topicSet;
+  let topics = 0, items = 0, learned = 0, due = 0;
+  const pool = KNOWLEDGE;
+  for (let i = 0; i < pool.length; i++) {
+    const topic = pool[i];
+    if (set && !set.has(topic.id)) continue;
+    if (!Array.isArray(topic.items)) continue;
+    topics++;
+    for (let j = 0; j < topic.items.length; j++) {
+      const item = topic.items[j];
+      if (!item || !item.id) continue;
+      items++;
+      const st = state[item.id];
+      if (st && (st.reviews || 0) > 0) learned++;
+      if (!st || !(st.nextReview > ts)) due++;         // 新卡与已到期都算待复习
+    }
+  }
+  return { topics: topics, items: items, learned: learned, due: due };
+}
+
 // ---------- 1. 记忆状态存储（localStorage） ----------
 
 const STORAGE_KEY = "reviewer-state-v1";
@@ -316,7 +415,7 @@ function applyReview(st, grade, now, itemId) {
 function getDueList() {
   const now = Date.now();
   const due = [];
-  for (const topic of KNOWLEDGE) {
+  for (const topic of ACTIVE_KNOWLEDGE) {
     for (const item of topic.items) {
       const st = state[item.id];
       const isNew = !st;
@@ -338,7 +437,7 @@ function getDueList() {
 function getFutureList() {
   const now = Date.now();
   const future = [];
-  for (const topic of KNOWLEDGE) {
+  for (const topic of ACTIVE_KNOWLEDGE) {
     for (const item of topic.items) {
       const st = state[item.id];
       if (!st) continue;                                           // 未学新词：不进入
@@ -524,6 +623,83 @@ function refreshReadyView() {
   setActionBar("ready");
   document.body.classList.remove("reviewing");
   updateBackBtn();
+  renderBookBar();
+}
+
+// ---------- 3.1.5 词书 UI（v1.25.0）----------
+// 顶部细条常驻（复习态隐藏）：左侧=当前词书按钮，右侧=本书已学/总数。
+function renderBookBar() {
+  const nameEl = document.getElementById("bookBarName");
+  if (!nameEl || !ACTIVE_BOOK) return;
+  nameEl.textContent = ACTIVE_BOOK.name;
+  const metaEl = document.getElementById("bookBarMeta");
+  const p = bookProgress(ACTIVE_BOOK);
+  metaEl.textContent = p.items ? ("已学 " + p.learned + " / " + p.items) : "暂无内容";
+}
+
+function openBookPicker() {
+  const list = document.getElementById("bookList");
+  if (!list) return;
+  const now = Date.now();
+  list.innerHTML = "";
+  const all = bookList();
+  for (let i = 0; i < all.length; i++) {
+    const b = all[i];
+    const p = bookProgress(b, now);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "book-item" + (b.id === activeBookId ? " current" : "");
+    const stat = p.items
+      ? '<span>' + p.topics + ' 个考点</span><span>' + p.items + ' 个记忆对象</span>' +
+        '<span>已学 ' + p.learned + '</span>' +
+        '<span class="bi-due">待复习 ' + p.due + '</span>'
+      : '<span class="bi-empty">内容待录入</span>';
+    btn.innerHTML =
+      '<div class="bi-top"><span class="bi-name"></span>' +
+      (b.id === activeBookId ? '<span class="bi-now">当前</span>' : '') + '</div>' +
+      (b.desc ? '<div class="bi-desc"></div>' : '') +
+      '<div class="bi-stat">' + stat + '</div>';
+    btn.querySelector(".bi-name").textContent = b.name;
+    if (b.desc) btn.querySelector(".bi-desc").textContent = b.desc;
+    btn.addEventListener("click", function () {
+      closeBookPicker();
+      switchBook(b.id);
+    });
+    list.appendChild(btn);
+  }
+  document.getElementById("bookPicker").classList.remove("hidden");
+  document.body.classList.add("picker-open");
+}
+
+function closeBookPicker() {
+  const node = document.getElementById("bookPicker");
+  if (node) node.classList.add("hidden");
+  document.body.classList.remove("picker-open");
+}
+
+function isBookPickerOpen() {
+  const node = document.getElementById("bookPicker");
+  return !!node && !node.classList.contains("hidden");
+}
+
+// 切换词书：只换「看哪一本」，不动任何记忆状态（item id 独立，进度天然隔离）
+function switchBook(id) {
+  if (id === activeBookId) return;
+  let target = null;
+  const all = bookList();
+  for (let i = 0; i < all.length; i++) if (all[i].id === id) target = all[i];
+  if (!target) return;
+  activeBookId = id;
+  try { localStorage.setItem(BOOK_STORAGE_KEY, id); } catch (e) { /* 隐私模式忽略 */ }
+  resolveActiveBook();
+  applyBookView();   // 顶部细条即刻显示新词书名，无需额外提示条
+}
+
+// 按当前词书重新决定首页该显示什么（有待复习 → 准备页；否则 → 完成屏平静态）
+function applyBookView() {
+  renderBookBar();
+  if (getDueList().length === 0) renderDoneIdle();
+  else refreshReadyView();
 }
 
 // ---------- 3.3 提前复习（v1.23.8 新增） ----------
@@ -846,7 +1022,7 @@ function countUp(el, target, dur) {
 // 沙箱/测试环境缺失时降级为 null（完成屏只隐藏对应信息，不报错）。
 function computeStatsSafe(now) {
   return (window.Stats && typeof window.Stats.compute === "function")
-    ? window.Stats.compute(state, KNOWLEDGE, now)
+    ? window.Stats.compute(state, ACTIVE_KNOWLEDGE, now)
     : null;
 }
 
@@ -857,7 +1033,7 @@ function nextDueInfo(now) {
   const t0 = dayStart.getTime();
   let nextTs = null;
   let tomorrow = 0;
-  for (const topic of KNOWLEDGE) {
+  for (const topic of ACTIVE_KNOWLEDGE) {
     for (const item of topic.items) {
       const st = state[item.id];
       if (!st || typeof st.nextReview !== "number" || st.nextReview <= now) continue;
@@ -991,6 +1167,22 @@ function renderDoneSession() {
 
 function renderDoneIdle() {
   const el = (id) => document.getElementById(id);
+  // 空词书（如尚未录入内容的「四六级翻译秘诀」）：给明确说明，而不是误显示「今日没有待复习」
+  const bp = bookProgress(ACTIVE_BOOK);
+  if (bp.items === 0) {
+    renderDoneCommon("这本词书还没有内容");
+    const sub = el("doneSub");
+    sub.textContent = "「" + ACTIVE_BOOK.name + "」的考点会在资料录入后出现，可先用顶部按钮切换到其他词书。";
+    sub.classList.remove("hidden");
+    el("doneRecap").classList.add("hidden");
+    el("doneNote").classList.add("hidden");
+    el("doneNewBtn").classList.add("hidden");
+    el("doneContinueBtn").classList.add("hidden");
+    const eb = el("doneEarlyBtn");
+    if (eb) eb.classList.add("hidden");
+    applyDoneCtaWeights();
+    return;
+  }
   const stats = computeStatsSafe(Date.now());
   const today = stats && stats.last7 && stats.last7.find((d) => d.today);
   renderDoneCommon(today && today.reviews > 0 ? "今日复习已完成" : "今日没有待复习");
@@ -1218,9 +1410,13 @@ function closeStats() {
 }
 
 function renderStats() {
-  const s = Stats.compute(state, KNOWLEDGE, Date.now());
+  const s = Stats.compute(state, ACTIVE_KNOWLEDGE, Date.now());
   const el = (id) => document.getElementById(id);
   const setText = (id, v) => { el(id).textContent = v; };
+  const subEl = document.querySelector("#statsView .stats-sub");
+  if (subEl && ACTIVE_BOOK) {
+    subEl.textContent = "当前词书：" + ACTIVE_BOOK.name + " · 全部数据实时取自你的复习记录（reviewer-state-v1），只展示学习量与复习状态，不做对错评价。";
+  }
 
   // 空数据横幅
   el("stEmptyBanner").classList.toggle("hidden", s.hasData);
@@ -1470,7 +1666,7 @@ document.addEventListener("keydown", (e) => {
 const GRADE_KEYMAP = { "1": "忘记", "2": "困难", "3": "记得", "4": "简单" };
 function keyLayerBlocked() {
   if (animating) return true;
-  const overlays = ["statsView", "importModal", "tokenModal", "earlyPicker", "moreMenu"];
+  const overlays = ["statsView", "importModal", "tokenModal", "earlyPicker", "moreMenu", "bookPicker"];
   for (let i = 0; i < overlays.length; i++) {
     const node = document.getElementById(overlays[i]);
     if (node && !node.classList.contains("hidden")) return true;   // 浮层在手，数字键不抢评价
@@ -1491,9 +1687,15 @@ document.addEventListener("keydown", (e) => {
   gradeCurrent(grade);
 });
 
-// 启动：有待复习 → 准备页；无待复习 → 完成屏平静态
-if (getDueList().length === 0) {
-  renderDoneIdle();
-} else {
-  refreshReadyView();
-}
+// 词书切换（v1.25.0）：顶部细条按钮 → 浮层选书；遮罩/取消关闭
+document.getElementById("bookSwitchBtn").addEventListener("click", openBookPicker);
+document.getElementById("bookCancelBtn").addEventListener("click", closeBookPicker);
+document.getElementById("bookPicker").addEventListener("click", (e) => {
+  if (e.target && e.target.id === "bookPicker") closeBookPicker();   // 点遮罩空白处关闭
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && isBookPickerOpen()) closeBookPicker();
+});
+
+// 启动：按当前词书决定 → 有待复习走准备页；无待复习走完成屏平静态
+applyBookView();

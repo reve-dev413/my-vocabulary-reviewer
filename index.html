@@ -861,6 +861,54 @@
   @media (max-width: 1024px) {
     .answer { text-align: center; }
   }
+
+  /* ===== 词书（v1.25.0）=====
+     分类容器：顶部细条常驻，复习态隐藏；浮层复用 .picker-overlay / .picker-box。
+     不引入新的视觉体系：颜色全部取自既有主题变量（深浅色自动适配）。 */
+  .bookbar {
+    /* body 是 flex column + align-items:center → 必须显式给宽，否则细条会被压成内容宽 */
+    width: 100%; max-width: 640px;              /* 与 .card 同宽，左边缘对齐卡片 */
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; margin: -8px 0 12px;
+  }
+  .bookbar-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    margin: 0; padding: 6px 12px 6px 11px;
+    font-size: 13px; font-weight: 600; letter-spacing: -0.01em;
+    color: var(--text); background: var(--btn-plain-bg);
+    border: 1px solid var(--btn-border); border-radius: 9999px;
+    cursor: pointer;
+    transition: border-color .12s ease;
+  }
+  .bookbar-btn:hover { border-color: var(--accent); }
+  .bookbar-btn:focus-visible { outline: 2px solid var(--accent-focus); outline-offset: 2px; }
+  .bookbar-name { max-width: 44vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bookbar-caret { font-size: 11px; font-weight: 400; color: var(--sub-text); }
+  .bookbar-meta { font-size: 11px; color: var(--sub-text); white-space: nowrap; }
+  body.reviewing .bookbar { display: none; }
+
+  .book-box { max-width: 400px; text-align: left; }
+  .book-list { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 12px; }
+  .book-item {
+    display: block; width: 100%; text-align: left; cursor: pointer;
+    padding: 12px 14px; border-radius: 14px;
+    border: 1px solid var(--card-border);
+    background: var(--btn-plain-bg); color: var(--text);
+    transition: border-color .12s ease;
+  }
+  .book-item:hover { border-color: var(--accent); }
+  .book-item.current { border-color: var(--accent); }
+  .bi-top { display: flex; align-items: center; gap: 8px; }
+  .bi-name { font-size: 15px; font-weight: 600; }
+  .bi-now {
+    font-size: 10px; font-weight: 600; line-height: 1.6;
+    padding: 0 7px; border-radius: 9999px;
+    color: var(--on-accent); background: var(--accent);
+  }
+  .bi-desc { margin-top: 4px; font-size: 12px; line-height: 1.55; color: var(--sub-text); }
+  .bi-stat { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: var(--sub-text); }
+  .bi-due { color: var(--accent); font-weight: 600; }
+  .bi-empty { color: var(--faint-text); }
 </style>
 <script>
 // 深色模式：手动选择（theme-preference）优先，否则跟随系统（prefers-color-scheme）
@@ -931,6 +979,15 @@
     <input type="file" id="fileInput" accept=".json" class="hidden">
   </div>
 </header>
+
+<!-- 词书细条（v1.25.0）：常驻显示当前词书；复习中隐藏（见 CSS body.reviewing .bookbar） -->
+<div class="bookbar" id="bookBar">
+  <button class="bookbar-btn" id="bookSwitchBtn" aria-haspopup="dialog" title="切换词书：背诵、复习与统计只作用于当前词书">
+    <span class="bookbar-name" id="bookBarName">全部考点</span>
+    <span class="bookbar-caret">切换 ▾</span>
+  </button>
+  <span class="bookbar-meta" id="bookBarMeta"></span>
+</div>
 
 <div class="card">
   <!-- 准备状态 -->
@@ -1065,6 +1122,16 @@
   </div>
 </div>
 
+<!-- 词书选择浮层（v1.25.0）：复用 .picker-overlay / .picker-box 现有设计语言 -->
+<div class="picker-overlay hidden" id="bookPicker" role="dialog" aria-modal="true" aria-label="选择词书">
+  <div class="picker-box book-box">
+    <div class="picker-title">选择词书</div>
+    <div class="picker-hint">背诵、复习与统计只作用于当前词书，切换不会打乱彼此的进度。</div>
+    <div class="book-list" id="bookList"></div>
+    <button class="btn btn-plain" id="bookCancelBtn">取消</button>
+  </div>
+</div>
+
 <!-- 学习统计（全屏浮层；数据实时取自复习记录，不做对错评价） -->
 <div id="statsView" class="stats-overlay hidden">
   <div class="stats-wrap">
@@ -1161,7 +1228,7 @@
 
 <footer>
   <div>纯本地运行 · 数据只保存在你的浏览器中 · 记得定期「导出进度」</div>
-  <div>v1.24.0</div>
+  <div>v1.25.0</div>
 </footer>
 
 <!-- 数据来源：knowledge-studio 母数据产物（由 tools/build_web_data.py 生成）；旧 knowledge.js 保留不引用 -->
