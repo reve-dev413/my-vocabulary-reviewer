@@ -1022,7 +1022,7 @@ function countUp(el, target, dur) {
 // 沙箱/测试环境缺失时降级为 null（完成屏只隐藏对应信息，不报错）。
 function computeStatsSafe(now) {
   return (window.Stats && typeof window.Stats.compute === "function")
-    ? window.Stats.compute(state, ACTIVE_KNOWLEDGE, now)
+    ? window.Stats.compute(state, ACTIVE_KNOWLEDGE, now, KNOWLEDGE)
     : null;
 }
 
@@ -1410,12 +1410,13 @@ function closeStats() {
 }
 
 function renderStats() {
-  const s = Stats.compute(state, ACTIVE_KNOWLEDGE, Date.now());
+  // 计数按当前词书，天数 / 连续天数 / 复习次数 / 图表按全部词书合计（当天学过任意一本即算）
+  const s = Stats.compute(state, ACTIVE_KNOWLEDGE, Date.now(), KNOWLEDGE);
   const el = (id) => document.getElementById(id);
   const setText = (id, v) => { el(id).textContent = v; };
   const subEl = document.querySelector("#statsView .stats-sub");
   if (subEl && ACTIVE_BOOK) {
-    subEl.textContent = "当前词书：" + ACTIVE_BOOK.name + " · 全部数据实时取自你的复习记录（reviewer-state-v1），只展示学习量与复习状态，不做对错评价。";
+    subEl.textContent = "当前词书：" + ACTIVE_BOOK.name + " · 学习量与复习状态按当前词书统计；学习天数、连续天数与复习次数按全部词书合计。数据实时取自你的复习记录（reviewer-state-v1）。";
   }
 
   // 空数据横幅

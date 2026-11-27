@@ -75,8 +75,15 @@
   }
 
   // 计算全部统计数据（纯函数：不读写 localStorage / DOM）
-  // 入参：state（reviewer-state-v1 对象）、knowledge（KS_DATA.knowledge）、now（毫秒时间戳，可注入便于测试）
-  function compute(state, knowledge, now) {
+  // 入参：
+  //   state        reviewer-state-v1 对象
+  //   knowledge    「计数口径」的知识集合 —— 通常传当前词书的 ACTIVE_KNOWLEDGE
+  //   now          毫秒时间戳（可注入便于测试）
+  //   allKnowledge 可选。「时间线口径」的知识集合 —— 传全部词书时，
+  //                学习天数 / 连续天数 / 复习次数 / 7 天与 30 天图表按全部词书合计
+  //                （用户明确：只要当天学了单词都算，不区分哪本词书）。
+  //                缺省 = 与 knowledge 相同（旧行为逐位不变）。
+  function compute(state, knowledge, now, allKnowledge) {
     state = state || {};
     knowledge = knowledge || [];
     now = typeof now === "number" ? now : Date.now();
@@ -86,33 +93,48 @@
     var d30Start = todayStart - 29 * MS_DAY; // 含今天共 30 天
     var d7Start = todayStart - 6 * MS_DAY;   // 含今天共 7 天
 
-    // 收集知识库内全部对象（排除历史残留键）
-    var items = [];
-    var totalItems = 0;
-    for (var t = 0; t < knowledge.length; t++) {
-      var topic = knowledge[t];
-      if (!topic || !Array.isArray(topic.items)) continue;
-      for (var i = 0; i < topic.items.length; i++) {
-        var item = topic.items[i];
-        if (!item || !item.id) continue;
-        totalItems++;
-        items.push({ id: item.id, st: state[item.id] || null });
+    // 收集知识库内对象（排除历史残留键）
+    function collect(kb) {
+      var arr = [];
+      var total = 0;
+      for (var t = 0; t < kb.length; t++) {
+        var topic = kb[t];
+        if (!topic || !Array.isArray(topic.items)) continue;
+        for (var i = 0; i < topic.items.length; i++) {
+          var item = topic.items[i];
+          if (!item || !item.id) continue;
+          total++;
+          arr.push({ id: item.id, st: state[item.id] || null });
+        }
       }
+      return { list: arr, total: total };
     }
 
+    var book = collect(knowledge);
+    var all = Array.isArray(allKnowledge) ? collect(allKnowledge) : book;
+    var items = book.list;         // 计数口径（当前词书）
+    var totalItems = book.total;
+    var allItems = all.list;       // 时间线口径（可含全部词书）
+
     // ---- 逐对象累计 ----
-    var learned = 0;          // 已学习（至少复习过一次）
-    var totalReviews = 0;     // 累计复习次数
+    var learned = 0;          // 已学习（至少复习过一次）· 当前词书
+    var totalReviews = 0;     // 累计复习次数 · 时间线口径
+    var allLearned = 0;       // 有过复习记录的对象数 · 时间线口径
     var daySet = {};          // 有复习记录的本地日键 → true
     var minTime = Infinity;
     var maxTime = -Infinity;
     var counts30 = {};        // 近 30 天每日复习次数：dayKey → n
     var newWords7 = {};       // 近 7 天每日新词数：dayKey → n
 
-    for (var j = 0; j < items.length; j++) {
-      var st = items[j].st;
+    for (var b = 0; b < items.length; b++) {
+      var sb = items[b].st;
+      if (sb && (sb.reviews || 0) >= 1) learned++;
+    }
+
+    for (var j = 0; j < allItems.length; j++) {
+      var st = allItems[j].st;
       if (!st || (st.reviews || 0) < 1) continue; // 未学习：不计入学习统计
-      learned++;
+      allLearned++;
       totalReviews += st.reviews || 0;
 
       var times = reviewTimes(st);
@@ -145,7 +167,8 @@
       }
     }
 
-    var hasData = learned > 0;
+    // 天数 / 连续天数 / 时间线一律看「有没有学过」（与词书无关）
+    var hasData = allLearned > 0;
     var learningDays = Object.keys(daySet).length;
     var lastStudyKey = hasData ? dayKey(maxTime) : null;
     var firstStudyKey = hasData ? dayKey(minTime) : null;
